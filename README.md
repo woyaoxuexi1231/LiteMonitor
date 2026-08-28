@@ -11,6 +11,11 @@ A lightweight and customizable desktop hardware monitoring tool — real-time mo
 > 🟢 已支持【内存清理】和【自定义插件】功能，详见：[插件开发指南（无需编程）](./resources/plugins/PLUGIN_DEV_GUIDE.md#🔌-plugin-system)
 
 
+###  🟢 网页版监控（Dashboard v2）
+局域网实时看板：四宫格概览、英文胶囊条、分项时间线与 30 分钟 / 按日历史。托盘双击即可打开。
+
+![LiteMonitor 网页版监控](./resources/screenshots/web.png)
+
 ![LiteMonitor 主界面](./resources/screenshots/overview.png)
 
 ###  🟢 横条模式 / 任务栏显示模式
@@ -46,9 +51,6 @@ A lightweight and customizable desktop hardware monitoring tool — real-time mo
 
 ###  🟢 历史流量统计
 ![LiteMonitor 主题编辑器](./resources/screenshots/overview7.png)
-
-###  🟢 网页版监控
-![LiteMonitor 网页版监控](./resources/screenshots/web.png)
  
 ---
 

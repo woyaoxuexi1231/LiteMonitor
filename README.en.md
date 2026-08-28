@@ -12,6 +12,11 @@ LiteMonitor is a modern **Windows desktop system monitoring tool**.
 It supports horizontal/vertical display, multiple languages, theme switching, transparency, adaptive DPI scaling, and three-level color alerts — in a clean and highly configurable interface.
 
 
+###  🟢 **Web Dashboard v2**
+Live LAN dashboard with overview cards, English capsules, per-metric timelines, and 30-minute / day history. Open it by double-clicking the tray icon.
+
+![LiteMonitor Web Dashboard](./resources/screenshots/web.png)
+
 ![LiteMonitor Main UI](./resources/screenshots/overview.png)
 ###  🟢 **Horizontal Mode / Taskbar Display**
 ![LiteMonitor Horizontal](./resources/screenshots/overview3.png)
