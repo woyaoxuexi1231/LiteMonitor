@@ -45,10 +45,10 @@ namespace LiteMonitor
         public string ScreenDevice { get; set; } = "";
 
         // ====== 任务栏 ======
-        public bool ShowTaskbar { get; set; } = true;
+        public bool ShowTaskbar { get; set; } = false;
         // ★★★ 新增：横条模式是否跟随任务栏布局？ ★★★
         public bool HorizontalFollowsTaskbar { get; set; } = false;
-        public bool HideMainForm { get; set; } = false;
+        public bool HideMainForm { get; set; } = true;
         public bool HideTrayIcon { get; set; } = false;
         public bool TaskbarAlignLeft { get; set; } = true;
         
@@ -101,9 +101,9 @@ namespace LiteMonitor
         public string TaskbarColorCrit { get; set; } = "#C03030";  // 严重 (橙红)
         public string TaskbarColorBg { get; set; } = "#D2D2D2";    // 防杂边背景色 (透明键)
 
-        // 双击动作配置
-        public int MainFormDoubleClickAction { get; set; } = 0;
-        public int TaskbarDoubleClickAction { get; set; } = 0;
+        // 双击动作配置（默认：打开网页仪表盘）
+        public int MainFormDoubleClickAction { get; set; } = 5;
+        public int TaskbarDoubleClickAction { get; set; } = 5;
 
         // 内存/显存显示模式
         public int MemoryDisplayMode { get; set; } = 1;
@@ -138,9 +138,11 @@ namespace LiteMonitor
         public bool AlertTempEnabled { get; set; } = true;
         public int AlertTempThreshold { get; set; } = 80;
 
-        public bool WebServerEnabled { get; set; } = false;
+        public bool WebServerEnabled { get; set; } = true;
         public int WebServerPort { get; set; } = 5000; // 默认端口
         public string WebServerPassword { get; set; } = ""; // 访问密码
+        /// <summary>启动后自动打开网页仪表盘</summary>
+        public bool OpenWebOnStartup { get; set; } = true;
         
         public ThresholdsSet Thresholds { get; set; } = new ThresholdsSet();
 

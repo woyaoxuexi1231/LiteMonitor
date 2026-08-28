@@ -102,13 +102,13 @@ namespace LiteMonitor.src.SystemServices
         // ================================================================
         public async Task SmartCheckDriver()
         {
-            await EnsureComponents(forceFpsCheck: false);
+            await EnsureComponents();
         }
         
         /// <summary>
         /// 核心统一检查逻辑：防止并发弹窗，智能判断下载策略
         /// </summary>
-        private async Task<bool> EnsureComponents(bool forceFpsCheck)
+        private async Task<bool> EnsureComponents()
         {
             await _downloadLock.WaitAsync();
             try
@@ -123,8 +123,8 @@ namespace LiteMonitor.src.SystemServices
                 bool isFpsEnabled = _cfg.IsAnyEnabled("FPS");
                 bool isFpsValid = IsValidExecutable(fpsPath);
                 
-                // 只要 FPS 开启且文件无效，或者被强制检查且文件无效，就需要处理
-                bool needFPS = forceFpsCheck || (isFpsEnabled && !isFpsValid);
+                // 只有用户真正开启了 FPS 监控，且组件缺失时，才提示安装
+                bool needFPS = isFpsEnabled && !isFpsValid;
 
                 if (pawnIOCheck.NeedsInstall && _startupPawnIOCheckSawPendingDriver)
                 {
@@ -180,11 +180,19 @@ namespace LiteMonitor.src.SystemServices
         }
 
         // ================================================================
-        // ★★★ 公共入口 2：PresentMon 检查 (FPS功能调用/启动调用) ★★★
+        // ★★★ 公共入口 2：PresentMon 检查 (仅在已开启 FPS 监控时) ★★★
         // ================================================================
         public async Task<bool> CheckAndDownloadPresentMon(bool silent = false)
         {
-            return await EnsureComponents(forceFpsCheck: true);
+            // 未开启 FPS：绝不弹「安装 FPS 组件」
+            if (!_cfg.IsAnyEnabled("FPS"))
+                return false;
+
+            string fpsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "LiteMonitorFPS.exe");
+            if (IsValidExecutable(fpsPath))
+                return true;
+
+            return await EnsureComponents();
         }
 
         // ----------------------------------------------------------------

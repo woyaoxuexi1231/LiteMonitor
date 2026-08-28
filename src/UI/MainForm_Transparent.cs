@@ -1,4 +1,5 @@
 using LiteMonitor.src.Core;
+using LiteMonitor.src.Core.Actions;
 using LiteMonitor.src.SystemServices;
 using LiteMonitor.src.UI;
 using LiteMonitor.src.UI.Helpers;
@@ -326,6 +327,15 @@ namespace LiteMonitor
                      ShowNotification("WebServer Error", 
                          (_cfg.Language == "zh" ? "Web服务启动失败: " : "Web Server Failed: ") + err, 
                          ToolTipIcon.Error);
+                }
+                else if (_cfg.OpenWebOnStartup)
+                {
+                    // 稍延迟，确保端口已监听
+                    this.BeginInvoke(new Action(async () =>
+                    {
+                        await Task.Delay(400);
+                        WebActions.OpenWebMonitor(_cfg);
+                    }));
                 }
             }
             // 这样既检查了驱动，也检查了更新，以及置顶 透明度 穿透 等，而且时机完美（窗口显示后）

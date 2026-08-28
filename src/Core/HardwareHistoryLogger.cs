@@ -30,22 +30,34 @@ namespace LiteMonitor.src.Core
     public static class HardwareHistoryLogger
     {
         public static readonly string[] TemperatureKeys = { "CPU.Temp", "GPU.Temp", "DISK.Temp", "MOBO.Temp" };
-        public static readonly string[] LoadKeys = { "CPU.Load", "GPU.Load", "MEM.Load" };
+        public static readonly string[] LoadKeys = { "CPU.Load", "GPU.Load", "MEM.Load", "GPU.VRAM", "BAT.Percent" };
         public static readonly string[] FrequencyKeys = { "CPU.Clock", "GPU.Clock" };
         public static readonly string[] PowerKeys = { "CPU.Power", "GPU.Power", "BAT.Power" };
         public static readonly string[] FpsKeys = { "FPS" };
+        public static readonly string[] SpeedKeys = { "NET.Up", "NET.Down", "DISK.Read", "DISK.Write" };
+        public static readonly string[] FanKeys = { "CPU.Fan", "GPU.Fan", "CASE.Fan", "CPU.Pump" };
+        public static readonly string[] ElectricKeys = { "CPU.Voltage", "BAT.Voltage", "BAT.Current" };
 
         private static readonly string _filePath = Path.Combine(AppContext.BaseDirectory, "HardwareHistory.json");
+        public static string FilePath => _filePath;
         private static readonly string _backupPath = Path.Combine(AppContext.BaseDirectory, "HardwareHistory.json.bak");
         private static readonly string _tempPath = Path.Combine(AppContext.BaseDirectory, "HardwareHistory.json.tmp");
         private static readonly object _dataLock = new object();
         private static readonly object _ioLock = new object();
         private static readonly TimeSpan _sampleInterval = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan _retention = TimeSpan.FromDays(7);
+        public static int RetentionDays => (int)_retention.TotalDays;
         private static readonly TimeSpan _saveInterval = TimeSpan.FromMinutes(5);
 
         private static readonly HashSet<string> _supportedKeys = new HashSet<string>(
-            TemperatureKeys.Concat(LoadKeys).Concat(FrequencyKeys).Concat(PowerKeys).Concat(FpsKeys),
+            TemperatureKeys
+                .Concat(LoadKeys)
+                .Concat(FrequencyKeys)
+                .Concat(PowerKeys)
+                .Concat(FpsKeys)
+                .Concat(SpeedKeys)
+                .Concat(FanKeys)
+                .Concat(ElectricKeys),
             StringComparer.OrdinalIgnoreCase);
 
         private static DateTime _lastSampleTime = DateTime.MinValue;
@@ -129,17 +141,17 @@ namespace LiteMonitor.src.Core
             }
         }
 
-        public static List<HardwareHistoryPoint> GetPoints(DateTime from)
+        public static List<HardwareHistoryPoint> GetPoints(DateTime from, DateTime? to = null)
         {
             lock (_dataLock)
             {
                 var result = Data.Points
-                    .Where(p => p.Time >= from)
+                    .Where(p => p.Time >= from && (!to.HasValue || p.Time < to.Value))
                     .Select(ClonePoint)
                     .ToList();
 
                 var pending = BuildCurrentPointUnsafe();
-                if (pending != null && pending.Time >= from)
+                if (pending != null && pending.Time >= from && (!to.HasValue || pending.Time < to.Value))
                 {
                     result.Add(pending);
                 }
@@ -151,6 +163,18 @@ namespace LiteMonitor.src.Core
         public static void Save()
         {
             SaveCore(flushPending: true);
+        }
+
+        public static void Clear()
+        {
+            lock (_dataLock)
+            {
+                Data.Points.Clear();
+                _currentBucket.Clear();
+                _currentMinute = DateTime.MinValue;
+                _lastSampleTime = DateTime.MinValue;
+            }
+            SaveCore(flushPending: false);
         }
 
         private static void SaveCore(bool flushPending)
@@ -190,9 +214,20 @@ namespace LiteMonitor.src.Core
         {
             foreach (string key in _supportedKeys)
             {
+                // FPS 会拉起 PresentMon，必须显式开启才采样
+                if (key.Equals("FPS", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (cfg.IsAnyEnabled("FPS")) yield return key;
+                    continue;
+                }
+
                 bool enabled = cfg.MonitorItems.Any(item =>
                     item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) &&
                     (item.VisibleInPanel || item.VisibleInTaskbar));
+
+                // 网页服务开启时，对轻量指标也记历史（不含 FPS）
+                if (!enabled && cfg.WebServerEnabled)
+                    enabled = true;
 
                 if (enabled) yield return key;
             }
@@ -209,8 +244,12 @@ namespace LiteMonitor.src.Core
                 MetricType.Percent => v >= 0 && v <= 100,
                 MetricType.Memory => v >= 0 && v <= 100,
                 MetricType.Frequency => v > 0 && v <= 10000,
-                MetricType.Power => v > 0 && v <= 1000,
+                MetricType.Power => v >= 0 && v <= 1000,
                 MetricType.FPS => v >= 0 && v <= 1000,
+                MetricType.DataSpeed => v >= 0,
+                MetricType.RPM => v >= 0 && v <= 30000,
+                MetricType.Voltage => v >= 0 && v <= 20,
+                MetricType.Current => v >= -100 && v <= 100,
                 _ => false
             };
         }

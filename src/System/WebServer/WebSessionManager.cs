@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO;
 using LiteMonitor.src.Core;
 
 namespace LiteMonitor.src.WebServer
@@ -123,9 +124,10 @@ namespace LiteMonitor.src.WebServer
             string[] lines = request.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length == 0) return;
             
-            string path = lines[0].Split(' ').Length > 1 ? lines[0].Split(' ')[1] : "/";
+            string pathWithQuery = lines[0].Split(' ').Length > 1 ? lines[0].Split(' ')[1] : "/";
+            string path = pathWithQuery.Split('?')[0];
             
-            if (path.StartsWith("/api/snapshot"))
+            if (path.StartsWith("/api/snapshot", StringComparison.OrdinalIgnoreCase))
             {
                 if (!CheckAuth(request))
                 {
@@ -139,20 +141,71 @@ namespace LiteMonitor.src.WebServer
                 writer.Flush();
                 SendHttpResponse(stream, 200, "application/json", ms.GetBuffer(), (int)ms.Length);
             }
+            else if (path.StartsWith("/api/history/clear", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!CheckAuth(request))
+                {
+                    SendHttpResponse(stream, 401, "text/plain", Encoding.UTF8.GetBytes("Unauthorized"), 12);
+                    return;
+                }
+                HardwareHistoryLogger.Clear();
+                byte[] ok = Encoding.UTF8.GetBytes("{\"ok\":true}");
+                SendHttpResponse(stream, 200, "application/json", ok, ok.Length);
+            }
+            else if (path.StartsWith("/api/history/open", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!CheckAuth(request))
+                {
+                    SendHttpResponse(stream, 401, "text/plain", Encoding.UTF8.GetBytes("Unauthorized"), 12);
+                    return;
+                }
+                try
+                {
+                    string dir = WebHistoryApi.HistoryDirectory;
+                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                    Process.Start(new ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
+                }
+                catch (Exception ex) { Debug.WriteLine("Open history folder failed: " + ex.Message); }
+                byte[] ok = Encoding.UTF8.GetBytes("{\"ok\":true}");
+                SendHttpResponse(stream, 200, "application/json", ok, ok.Length);
+            }
+            else if (path.StartsWith("/api/history", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!CheckAuth(request))
+                {
+                    SendHttpResponse(stream, 401, "text/plain", Encoding.UTF8.GetBytes("Unauthorized"), 12);
+                    return;
+                }
+
+                string mode = "live";
+                var modeMatch = Regex.Match(pathWithQuery, @"[?&]mode=([^&\s]+)", RegexOptions.IgnoreCase);
+                if (modeMatch.Success)
+                    mode = Uri.UnescapeDataString(modeMatch.Groups[1].Value);
+
+                string? day = null;
+                var dayMatch = Regex.Match(pathWithQuery, @"[?&]day=([^&\s]+)", RegexOptions.IgnoreCase);
+                if (dayMatch.Success)
+                    day = Uri.UnescapeDataString(dayMatch.Groups[1].Value);
+
+                // 兼容旧参数 sec=
+                var secMatch = Regex.Match(pathWithQuery, @"[?&]sec=(\d+)");
+                if (!modeMatch.Success && secMatch.Success && int.TryParse(secMatch.Groups[1].Value, out int sec))
+                {
+                    mode = sec >= 86400 ? "day" : "live";
+                    if (mode == "day") day = DateTime.Now.ToString("yyyy-MM-dd");
+                }
+
+                byte[] data = WebHistoryApi.BuildHistoryJson(mode, day);
+                SendHttpResponse(stream, 200, "application/json", data, data.Length);
+            }
             else if (path == "/favicon.ico")
             {
                 SendHttpResponse(stream, 404, "text/html", Array.Empty<byte>(), 0);
             }
             else
             {
-                // 默认返回首页
-                string iconBase64 = WebPageContent.GetAppIconBase64();
                 bool authRequired = !string.IsNullOrEmpty(Settings.Load().WebServerPassword);
-                
-                string html = WebPageContent.IndexHtml
-                    .Replace("{{FAVICON}}", !string.IsNullOrEmpty(iconBase64) ? $"<link rel='icon' type='image/png' href='data:image/png;base64,{iconBase64}'>" : "")
-                    .Replace("{{AUTH_REQUIRED}}", authRequired.ToString().ToLower());
-                
+                string html = WebPageContent.GetIndexHtml(authRequired);
                 byte[] data = Encoding.UTF8.GetBytes(html);
                 SendHttpResponse(stream, 200, "text/html; charset=utf-8", data, data.Length);
             }

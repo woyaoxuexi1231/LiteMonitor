@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentry-Lite · Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /*
+      Semantic colors (only these four):
+      gray  --muted / --empty
+      green --ok    #10b981
+      yellow --warn #fbbf24
+      red   --crit  #f87171
+      Always use var(--ok|warn|crit|muted|empty). Never invent extra hues.
+    */
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface2: #f6f7f9;
+      --border: #e4e7ee;
+      --text: #171717;
+      --muted: #737373;
+      --ok: #10b981;
+      --warn: #fbbf24;
+      --crit: #f87171;
+      --empty: #d1d5db;
+      --ok-bg: rgba(16, 185, 129, 0.14);
+      --warn-bg: rgba(251, 191, 36, 0.18);
+      --crit-bg: rgba(248, 113, 113, 0.16);
+      --font: "Inter", sans-serif;
+      --r-xl: 28px;
+      --r-lg: 20px;
+      --r-md: 14px;
+      --shadow: 0 16px 48px rgba(18, 21, 26, 0.07), 0 2px 8px rgba(18, 21, 26, 0.04);
+      --shadow-sm: 0 2px 8px rgba(18, 21, 26, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg); }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app { max-width: 960px; margin: 0 auto; padding: 28px 24px 32px; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand { display: flex; align-items: baseline; gap: 10px; }
+    .brand h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; }
+    .brand .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--ok); box-shadow: 0 0 8px var(--ok);
+      animation: pulse 2s ease infinite;
+    }
+    .brand .dot.off { background: #c3c8d1; box-shadow: none; animation: none; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .brand span { font-size: 13px; color: var(--muted); }
+
+    .actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      font: 500 13px var(--font);
+      padding: 8px 14px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn:hover { color: var(--text); border-color: #cfd4de; background: #fff; }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .btn.danger { color: var(--crit); border-color: rgba(248, 113, 113, 0.35); }
+    .btn.danger:hover { color: var(--crit); border-color: rgba(248, 113, 113, 0.55); background: #fff; }
+    .btn.spinning .ico { display: inline-block; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .range {
+      display: flex; gap: 3px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 4px;
+    }
+    .range button {
+      font: 500 13px var(--font);
+      padding: 7px 12px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      transition: 0.12s;
+    }
+    .range button.on {
+      background: #fff;
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .live {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 640px) {
+      .live { grid-template-columns: repeat(2, 1fr); }
+    }
+    .live-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 18px 20px;
+    }
+    .live-card .label {
+      font-size: 13px; font-weight: 500;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .live-card .value {
+      font-size: 24px; font-weight: 600;
+      letter-spacing: -0.03em; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font);
+      transition: color 0.15s;
+    }
+    .live-card .sub {
+      font-size: 13px; margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font);
+      transition: color 0.15s;
+    }
+    .sev-ok { color: var(--ok) !important; }
+    .sev-warn { color: var(--warn) !important; }
+    .sev-crit { color: var(--crit) !important; }
+    .live-card .sub.neutral { color: var(--muted) !important; }
+    .live-card.net .value { font-size: 22px; }
+    .live-card.net .sub { font-size: 12px; }
+
+    .panel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 20px 22px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 12px;
+    }
+    .panel-head h2 { font-size: 14px; font-weight: 500; }
+    .panel-head .score {
+      font-size: 14px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font);
+    }
+    .panel-head .score.neutral { color: var(--muted); }
+    .status-score, .status-label { transition: color 0.15s; }
+
+    .bars { display: flex; gap: 3px; height: 34px; }
+    .bar {
+      flex: 1; border-radius: 999px; min-width: 0;
+      cursor: crosshair;
+      transition: transform 0.12s ease, opacity 0.12s;
+    }
+    .bar.ok { background: var(--ok); }
+    .bar.warn { background: var(--warn); }
+    .bar.crit { background: var(--crit); }
+    .bar.empty { background: var(--empty); cursor: default; }
+    .bar.empty:hover, .bar.empty.on { transform: none; opacity: 1; }
+    .bar:hover, .bar.on { transform: scaleY(1.12); opacity: 0.88; }
+
+    .bar-axis {
+      display: flex; justify-content: space-between;
+      margin-top: 10px; font-size: 13px; color: var(--muted);
+    }
+
+    .uptime-note {
+      margin-top: 10px; font-size: 11px; color: var(--muted);
+      line-height: 1.7; letter-spacing: 0.01em; user-select: none;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .uptime-note .k { font-weight: 600; color: var(--text); }
+    .uptime-note .c-ok { color: var(--ok); font-weight: 600; }
+    .uptime-note .c-warn { color: var(--warn); font-weight: 600; }
+    .uptime-note .c-crit { color: var(--crit); font-weight: 600; }
+    .uptime-note .sep { opacity: 0.45; margin: 0 2px; }
+
+    .temp-note {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 8px; font-size: 11px; color: var(--muted);
+    }
+    .temp-note .tag {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 8px; font-family: var(--font);
+    }
+    .temp-note .tag.ok { background: var(--ok-bg); color: var(--ok); }
+    .temp-note .tag.off { background: rgba(115, 115, 115, 0.1); color: var(--muted); }
+
+    .bar-tip {
+      display: none; position: absolute; z-index: 20;
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      pointer-events: none;
+      min-width: 260px;
+      box-shadow: var(--shadow-sm);
+    }
+    .bar-tip.show { display: block; }
+    .bar-tip .time { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .bar-tip .status-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    }
+    .bar-tip .status-dot {
+      width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0;
+    }
+    .bar-tip .status-dot.ok { background: var(--ok); }
+    .bar-tip .status-dot.warn { background: var(--warn); }
+    .bar-tip .status-dot.crit { background: var(--crit); }
+    .bar-tip .status-dot.empty { background: var(--empty); }
+    .bar-tip .status-label { font-size: 14px; font-weight: 600; }
+    .bar-tip .status-label.neutral { color: var(--muted); }
+    .bar-tip .status-score {
+      margin-left: auto; font-size: 14px; font-weight: 600;
+      font-variant-numeric: tabular-nums; font-family: var(--font);
+    }
+    .bar-tip .status-score.neutral { color: var(--muted); }
+    .bar-tip .metrics {
+      display: flex; flex-direction: column; gap: 8px;
+      padding-top: 12px; border-top: 1px solid var(--border); margin-bottom: 14px;
+    }
+    .bar-tip .metric-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; font-size: 13px;
+    }
+    .bar-tip .metric-row .k {
+      display: flex; align-items: center; gap: 7px;
+      color: var(--muted); flex-shrink: 0;
+    }
+    .bar-tip .metric-row .dot {
+      width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0;
+      background: var(--muted); opacity: 0.45;
+    }
+    .bar-tip .metric-row .vals {
+      display: flex; align-items: center; gap: 6px;
+      flex-wrap: wrap; justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-block; padding: 3px 9px; border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      font-variant-numeric: tabular-nums; font-family: var(--font);
+      line-height: 1.3;
+    }
+    .pill.ok { background: var(--ok-bg); color: var(--ok); }
+    .pill.warn { background: var(--warn-bg); color: var(--warn); }
+    .pill.crit { background: var(--crit-bg); color: var(--crit); }
+    .pill.neutral { background: rgba(115, 115, 115, 0.1); color: var(--text); }
+
+    .bar-tip .legend {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .bar-tip .legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--muted);
+    }
+    .bar-tip .legend-item .swatch {
+      width: 8px; height: 8px; border-radius: 999px;
+    }
+
+    .stats-block { display: flex; flex-direction: column; gap: 8px; }
+    .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stats.rules { flex-wrap: nowrap; }
+    @media (max-width: 900px) { .stats.rules { flex-wrap: wrap; } }
+    .stat {
+      font-size: 11.5px; color: var(--muted); padding: 8px 12px;
+      font-variant-numeric: tabular-nums; font-family: var(--font);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+    .stat .v { font-weight: 600; font-size: 11.5px; }
+    .stat.color-rule {
+      white-space: nowrap;
+      display: inline-flex; align-items: center; flex-wrap: wrap;
+      gap: 4px 6px;
+    }
+    .stat.color-rule .c { font-weight: 600; font-size: 11.5px; }
+    .stat.color-rule .c.ok { color: var(--ok); }
+    .stat.color-rule .c.warn { color: var(--warn); }
+    .stat.color-rule .c.crit { color: var(--crit); }
+    .stat.color-rule .divider { opacity: 0.45; margin: 0 2px; }
+    .stat.color-rule .group-label { font-weight: 500; color: var(--text); margin-right: 2px; }
+
+    .foot {
+      margin-top: 18px; font-size: 13px; color: var(--muted);
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="brand">
+      <div class="dot" id="brandDot"></div>
+      <h1>Dashboard</h1>
+      <span>Sentry-Lite</span>
+    </div>
+    <div class="actions">
+      <div class="range" id="rangeSelector">
+        <button type="button" data-sec="1800" class="on">30m</button>
+        <button type="button" data-sec="86400">24h</button>
+        <button type="button" data-sec="604800">7d</button>
+      </div>
+      <button type="button" class="btn" id="btnRefresh" title="Reload uptime for the current range"><span class="ico">↻</span> Refresh</button>
+      <button type="button" class="btn" id="btnOpenData" title="Open history data folder">Open Folder</button>
+      <button type="button" class="btn danger" id="btnClearData" title="Delete all recorded history">Clear Data</button>
+    </div>
+  </header>
+
+  <section class="live">
+    <div class="live-card cpu">
+      <div class="label">CPU</div>
+      <div class="value sev-ok" id="liveCpu">32%</div>
+      <div class="sub sev-warn" id="liveCpuT">78°C</div>
+    </div>
+    <div class="live-card gpu">
+      <div class="label">GPU</div>
+      <div class="value sev-ok" id="liveGpu">16%</div>
+      <div class="sub sev-ok" id="liveGpuT">71°C</div>
+    </div>
+    <div class="live-card ram">
+      <div class="label">RAM</div>
+      <div class="value sev-warn" id="liveRam">85%</div>
+      <div class="sub sev-warn" id="liveRamSub">13.6 / 16 GB</div>
+    </div>
+    <div class="live-card net">
+      <div class="label">NET</div>
+      <div class="value sev-ok" id="liveDn">840.0 KB/s</div>
+      <div class="sub neutral" id="liveUp">↑ 12 B/s</div>
+    </div>
+  </section>
+
+  <section class="panel" id="healthPanel">
+    <div class="panel-head">
+      <h2>Uptime</h2>
+      <span class="score sev-ok" id="healthScore">—</span>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="bar-axis"><span id="axisL">30 min ago</span><span>now</span></div>
+    <div class="uptime-note">
+      <div class="rule-row"><span class="k">Score:</span> 100 <span class="sep">−</span> 0.8 per 1% CPU over 55% <span class="sep">−</span> 0.5 per 1% GPU over 45% <span class="sep">−</span> 2 per 1% RAM over 90% <span class="sep">−</span> 5–12 for temp ≥75°C</div>
+      <div class="color-row"><span class="c-crit">&lt;65 Critical</span><span class="sep">·</span><span class="c-warn">65–85 Degraded</span><span class="sep">·</span><span class="c-ok">&gt;85 Healthy</span><span class="sep">·</span><span>Uptime% = share of healthy periods</span></div>
+      <div class="temp-note">
+        <span class="tag ok" id="tagCpuT">CPU temp available</span>
+        <span class="tag ok" id="tagGpuT">GPU temp available</span>
+      </div>
+    </div>
+    <div class="bar-tip" id="barTip">
+      <div class="time" id="btTime">—</div>
+      <div class="status-row">
+        <span class="status-dot ok" id="btDot"></span>
+        <span class="status-label" id="btLabel">—</span>
+        <span class="status-score" id="btScore">—</span>
+      </div>
+      <div class="metrics">
+        <div class="metric-row"><span class="k"><span class="dot"></span>CPU</span><span class="vals" id="btCpuVals"></span></div>
+        <div class="metric-row"><span class="k"><span class="dot"></span>GPU</span><span class="vals" id="btGpuVals"></span></div>
+        <div class="metric-row"><span class="k"><span class="dot"></span>RAM</span><span class="vals" id="btRamVals"></span></div>
+        <div class="metric-row"><span class="k"><span class="dot"></span>NET</span><span class="vals" id="btNetVals"></span></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:var(--ok)"></span>Healthy</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--warn)"></span>Degraded</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--crit)"></span>Critical</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--empty)"></span>No data</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats-block">
+    <div class="stats" id="statsRow">
+      <div class="stat" id="statCpu">CPU —</div>
+      <div class="stat" id="statGpu">GPU —</div>
+      <div class="stat" id="statRam">RAM —</div>
+    </div>
+    <div class="stats rules" id="colorRulesRow">
+      <div class="stat color-rule">
+        <span class="group-label">CPU</span><span class="c ok">&lt;70%</span><span class="c warn">70–90%</span><span class="c crit">≥90%</span><span class="divider">·</span>
+        <span class="c ok">&lt;75°C</span><span class="c warn">75–85°C</span><span class="c crit">≥85°C</span>
+      </div>
+      <div class="stat color-rule">
+        <span class="group-label">GPU</span><span class="c ok">&lt;70%</span><span class="c warn">70–90%</span><span class="c crit">≥90%</span><span class="divider">·</span>
+        <span class="c ok">&lt;75°C</span><span class="c warn">75–85°C</span><span class="c crit">≥85°C</span>
+      </div>
+      <div class="stat color-rule">
+        <span class="group-label">RAM</span><span class="c ok">&lt;80%</span><span class="c warn">80–90%</span><span class="c crit">≥90%</span>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <span id="footInfo">—</span>
+    <span id="clock">—</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+const BUCKET_COUNTS = { 1800: 30, 86400: 24, 604800: 7 };
+const AXIS_LABELS = { 1800: "30 min", 86400: "24 hours", 604800: "7 days" };
+const ST = { ok: { label: "Healthy" }, warn: { label: "Degraded" }, crit: { label: "Critical" }, empty: { label: "No data" } };
+
+const tempCpuOn = true;
+const tempGpuOn = true;
+let currentSec = 1800;
+let currentBuckets = [];
+let busy = false;
+
+function sevPct(v) { if (v >= 90) return "crit"; if (v >= 70) return "warn"; return "ok"; }
+function sevRam(v) { if (v >= 90) return "crit"; if (v >= 80) return "warn"; return "ok"; }
+function sevTemp(v) { if (v >= 85) return "crit"; if (v >= 75) return "warn"; return "ok"; }
+function uptimeLevel(okRatio) { if (okRatio >= 85) return "ok"; if (okRatio >= 65) return "warn"; return "crit"; }
+function sevCls(s) { return "sev-" + s; }
+
+function fmtDn(v) {
+  return v >= 1048576 ? (v / 1048576).toFixed(2) + " MB/s"
+       : v >= 1024 ? (v / 1024).toFixed(1) + " KB/s"
+       : Math.round(v) + " B/s";
+}
+function fmtUp(v) {
+  if (v >= 1048576) return "↑ " + (v / 1048576).toFixed(2) + " MB/s";
+  if (v >= 1024) return "↑ " + (v / 1024).toFixed(1) + " KB/s";
+  return "↑ " + Math.round(v) + " B/s";
+}
+function fmtPct(v) { return v == null || v < 0 ? "—" : Math.round(v) + "%"; }
+function fmtTemp(v) { return v == null || v < 0 ? "—" : Math.round(v) + "°C"; }
+
+function pill(text, sev) { return `<span class="pill ${sev}">${text}</span>`; }
+function setPills(id, items) { $(id).innerHTML = items.join(""); }
+
+const rng = s => { const x = Math.sin(s * 777.1) * 9999; return x - Math.floor(x); };
+
+function generateSeries(N, base, amp, freq, spike = null) {
+  const a = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / Math.max(1, N - 1);
+    let v = base + Math.sin(t * Math.PI * 2 * freq) * amp + (rng(i + base) - 0.5) * amp * 0.2;
+    if (spike && t > spike) v += amp * 1.4 * Math.sin((t - spike) / (1 - spike) * Math.PI);
+    a.push(Math.max(0, v));
+  }
+  for (let p = 0; p < 4; p++) {
+    for (let i = 1; i < N - 1; i++) a[i] = a[i - 1] * 0.25 + a[i] * 0.5 + a[i + 1] * 0.25;
+  }
+  return a;
+}
+
+function generateDataset(N) {
+  return {
+    cpu: generateSeries(N, 28, 14, 1.3, 0.74),
+    gpu: generateSeries(N, 12, 7, 1.0, 0.8),
+    ram: generateSeries(N, 84, 2.5, 0.5),
+    cpuT: generateSeries(N, 74, 14, 1.1, 0.74),
+    gpuT: generateSeries(N, 68, 12, 0.9, 0.8),
+    dn: generateSeries(N, 420 * 1024, 180 * 1024, 1.6, 0.55),
+    up: generateSeries(N, 14, 8, 2.0),
+  };
+}
+
+function avg(arr, a, z) {
+  const slice = arr.slice(a, z);
+  if (!slice.length) return 0;
+  return slice.reduce((s, v) => s + v, 0) / slice.length;
+}
+
+function buildBuckets(sec) {
+  const B = BUCKET_COUNTS[sec] || 60;
+  const N = Math.max(B * 4, 60);
+  const data = generateDataset(N);
+  const buckets = [];
+
+  for (let i = 0; i < B; i++) {
+    const empty = (sec === 1800 && i < 3);
+    if (empty) {
+      buckets.push({ empty: true, level: 0, score: 0, cpuA: -1, gpuA: -1, ramA: -1, dnA: 0, upA: 0, cpuTA: -1, gpuTA: -1 });
+      continue;
+    }
+
+    const a = Math.floor(i / B * N);
+    const z = Math.floor((i + 1) / B * N);
+    const cpuA = avg(data.cpu, a, z);
+    const gpuA = avg(data.gpu, a, z);
+    const ramA = avg(data.ram, a, z);
+    const dnA = avg(data.dn, a, z);
+    const upA = avg(data.up, a, z);
+    const cpuTA = avg(data.cpuT, a, z);
+    const gpuTA = avg(data.gpuT, a, z);
+
+    let score = 100
+      - Math.max(0, cpuA - 55) * 0.8
+      - Math.max(0, gpuA - 45) * 0.5
+      - Math.max(0, ramA - 90) * 2;
+    if (cpuTA >= 75) score -= 8;
+    if (gpuTA >= 75) score -= 5;
+    if (cpuTA >= 85) score -= 12;
+    if (gpuTA >= 85) score -= 8;
+
+    if (B === 30 && (i === 12 || i === 13)) score = 72;
+    if (B === 30 && (i === 18 || i === 19)) score = 76;
+    if (B === 30 && (i === 24 || i === 25)) score = 52;
+    if (B === 24 && (i === 8 || i === 9)) score = 70;
+    if (B === 7 && i === 3) score = 62;
+
+    score = Math.max(40, Math.min(100, score));
+    const level = score < 65 ? 2 : score < 85 ? 1 : 0;
+    buckets.push({ empty: false, level, score, cpuA, gpuA, ramA, dnA, upA, cpuTA, gpuTA });
+  }
+
+  const stats = {
+    cpu: { max: Math.max(...data.cpu), avg: avg(data.cpu, 0, N) },
+    cpuT: { max: Math.max(...data.cpuT), avg: avg(data.cpuT, 0, N) },
+    gpu: { max: Math.max(...data.gpu), avg: avg(data.gpu, 0, N) },
+    gpuT: { max: Math.max(...data.gpuT), avg: avg(data.gpuT, 0, N) },
+    ram: { max: Math.max(...data.ram), avg: avg(data.ram, 0, N) },
+  };
+
+  return { buckets, stats };
+}
+
+function barLevelClass(b) {
+  if (b.empty) return "empty";
+  return ["ok", "warn", "crit"][b.level];
+}
+function barLevelKey(b) {
+  if (b.empty) return "empty";
+  return ["ok", "warn", "crit"][b.level];
+}
+
+function renderBars(buckets, axisL) {
+  const bars = $("bars");
+  bars.innerHTML = "";
+  currentBuckets = buckets;
+  buckets.forEach((b, i) => {
+    const el = document.createElement("div");
+    el.className = "bar " + barLevelClass(b);
+    el.dataset.i = i;
+    bars.appendChild(el);
+  });
+
+  const withData = buckets.filter(b => !b.empty);
+  const score = $("healthScore");
+  if (!withData.length) {
+    score.textContent = "—";
+    score.className = "score neutral";
+  } else {
+    const okRatio = withData.filter(b => b.level === 0).length / withData.length * 100;
+    score.textContent = okRatio.toFixed(1) + "%";
+    score.className = "score " + sevCls(uptimeLevel(okRatio));
+  }
+
+  $("axisL").textContent = axisL + " ago";
+  $("footInfo").textContent =
+    buckets.length + " buckets · " +
+    (tempCpuOn ? "CPU temp on" : "CPU temp off") +
+    (tempGpuOn ? " / GPU temp on" : " / GPU temp off");
+}
+
+function renderStats(s) {
+  const val = c => `<span class="v ${c.cls}">${c.v}</span>`;
+  const cpu = s.cpu, cpuT = s.cpuT, gpu = s.gpu, gpuT = s.gpuT, ram = s.ram;
+  $("statCpu").innerHTML =
+    `CPU  max ${val({ v: fmtPct(cpu.max), cls: sevCls(sevPct(cpu.max)) })}` +
+    (tempCpuOn ? ` / ${val({ v: fmtTemp(cpuT.max), cls: sevCls(sevTemp(cpuT.max)) })}` : "") +
+    `  avg ${val({ v: fmtPct(cpu.avg), cls: sevCls(sevPct(cpu.avg)) })}` +
+    (tempCpuOn ? ` / ${val({ v: fmtTemp(cpuT.avg), cls: sevCls(sevTemp(cpuT.avg)) })}` : "");
+  $("statGpu").innerHTML =
+    `GPU  max ${val({ v: fmtPct(gpu.max), cls: sevCls(sevPct(gpu.max)) })}` +
+    (tempGpuOn ? ` / ${val({ v: fmtTemp(gpuT.max), cls: sevCls(sevTemp(gpuT.max)) })}` : "") +
+    `  avg ${val({ v: fmtPct(gpu.avg), cls: sevCls(sevPct(gpu.avg)) })}` +
+    (tempGpuOn ? ` / ${val({ v: fmtTemp(gpuT.avg), cls: sevCls(sevTemp(gpuT.avg)) })}` : "");
+  $("statRam").innerHTML =
+    `RAM  max ${val({ v: fmtPct(ram.max), cls: sevCls(sevRam(ram.max)) })}` +
+    `  avg ${val({ v: fmtPct(ram.avg), cls: sevCls(sevRam(ram.avg)) })}`;
+}
+
+function setRefreshBusy(on) {
+  const btn = $("btnRefresh");
+  btn.disabled = on;
+  btn.classList.toggle("spinning", on);
+}
+
+function requestHisto() {
+  if (busy) return;
+  busy = true;
+  setRefreshBusy(true);
+  setTimeout(() => {
+    const { buckets, stats } = buildBuckets(currentSec);
+    renderBars(buckets, AXIS_LABELS[currentSec] || "");
+    renderStats(stats);
+    busy = false;
+    setRefreshBusy(false);
+  }, 180);
+}
+
+const barsEl = $("bars"), barTip = $("barTip"), healthPanel = $("healthPanel");
+barsEl.addEventListener("mousemove", e => {
+  const bar = e.target.closest(".bar");
+  if (!bar) return;
+  barsEl.querySelectorAll(".bar").forEach(b => b.classList.remove("on"));
+  bar.classList.add("on");
+
+  const b = currentBuckets[+bar.dataset.i];
+  if (!b) return;
+  const lk = barLevelKey(b);
+  const st = ST[lk];
+  const i = +bar.dataset.i;
+  const n = currentBuckets.length;
+  const frac = 1 - i / n;
+
+  let btTime = "Now";
+  if (currentSec === 604800) {
+    const days = Math.round(frac * 7);
+    if (days > 0) btTime = days + " day" + (days === 1 ? "" : "s") + " ago";
+  } else if (currentSec === 86400) {
+    const hours = Math.round(frac * 24);
+    if (hours > 0) btTime = hours + " hour" + (hours === 1 ? "" : "s") + " ago";
+  } else {
+    const mins = Math.round(frac * (currentSec / 60));
+    if (mins > 0) btTime = mins + " min ago";
+  }
+
+  $("btTime").textContent = btTime;
+  $("btDot").className = "status-dot " + lk;
+  $("btLabel").textContent = st.label;
+  $("btLabel").className = "status-label " + (b.empty ? "neutral" : sevCls(b.level));
+
+  const bs = $("btScore");
+  if (b.empty) {
+    bs.textContent = "—";
+    bs.className = "status-score neutral";
+    setPills("btCpuVals", [pill("No samples", "neutral")]);
+    setPills("btGpuVals", [pill("No samples", "neutral")]);
+    setPills("btRamVals", [pill("No samples", "neutral")]);
+    setPills("btNetVals", [pill("No samples", "neutral")]);
+  } else {
+    bs.textContent = Math.round(b.score) + "%";
+    bs.className = "status-score " + sevCls(b.level);
+    setPills("btCpuVals", [
+      pill(fmtPct(b.cpuA) + " avg", sevPct(b.cpuA)),
+      tempCpuOn ? pill(fmtTemp(b.cpuTA) + " avg", sevTemp(b.cpuTA)) : pill("Temp unavailable", "neutral"),
+    ]);
+    setPills("btGpuVals", [
+      pill(fmtPct(b.gpuA) + " avg", sevPct(b.gpuA)),
+      tempGpuOn ? pill(fmtTemp(b.gpuTA) + " avg", sevTemp(b.gpuTA)) : pill("Temp unavailable", "neutral"),
+    ]);
+    setPills("btRamVals", [pill(fmtPct(b.ramA) + " avg", sevRam(b.ramA))]);
+    setPills("btNetVals", [pill(fmtDn(b.dnA) + " dl", "ok"), pill(fmtUp(b.upA), "neutral")]);
+  }
+
+  barTip.classList.add("show");
+  const hr = healthPanel.getBoundingClientRect();
+  const br = bar.getBoundingClientRect();
+  let left = br.left - hr.left + br.width / 2 - (barTip.offsetWidth || 220) / 2;
+  left = Math.max(4, Math.min(left, hr.width - (barTip.offsetWidth || 220) - 4));
+  barTip.style.left = left + "px";
+  barTip.style.bottom = hr.height - (br.top - hr.top) + 10 + "px";
+});
+
+barsEl.addEventListener("mouseleave", () => {
+  barTip.classList.remove("show");
+  barsEl.querySelectorAll(".bar").forEach(b => b.classList.remove("on"));
+});
+
+$("btnRefresh").addEventListener("click", () => requestHisto());
+$("btnOpenData").addEventListener("click", () => {
+  alert("Mockup only — in the app this opens the history data folder.");
+});
+$("btnClearData").addEventListener("click", () => {
+  if (!confirm("Delete all recorded history data? This cannot be undone.")) return;
+  requestHisto();
+});
+
+$("rangeSelector").querySelectorAll("button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    $("rangeSelector").querySelectorAll("button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    currentSec = parseInt(btn.dataset.sec, 10);
+    requestHisto();
+  });
+});
+
+function tick() {
+  $("clock").textContent = new Date().toLocaleTimeString("en-GB", { hour12: false });
+}
+setInterval(tick, 1000);
+tick();
+requestHisto();
+</script>
+</body>
+</html>

@@ -154,6 +154,8 @@ namespace LiteMonitor.src.WebServer
             writer.WriteString("ip", localIp);
             writer.WriteNumber("port", _currentRunningPort);
             writer.WriteString("uptime", (DateTime.Now - Process.GetCurrentProcess().StartTime).ToString(@"hh\:mm\:ss"));
+            writer.WriteNumber("ramTotalGB", Settings.DetectedRamTotalGB);
+            writer.WriteNumber("vramTotalGB", Settings.DetectedGpuVramTotalGB);
             writer.WriteEndObject();
 
             // "items" array
@@ -187,6 +189,7 @@ namespace LiteMonitor.src.WebServer
                 double pct = 0;
                 int status = 0;
                 bool isPrimary = false;
+                float? rawValue = null;
 
                 if (item.Key.StartsWith("DASH."))
                 {
@@ -207,6 +210,10 @@ namespace LiteMonitor.src.WebServer
                 }
                 else
                 {
+                    // FPS 会惰性启动 PresentMon；未开启时不要探测
+                    if (item.Key.Equals("FPS", StringComparison.OrdinalIgnoreCase) && !_cfg.IsAnyEnabled("FPS"))
+                        continue;
+
                     // 硬件监控项
                     float? val = hw.Get(item.Key);
 
@@ -214,18 +221,16 @@ namespace LiteMonitor.src.WebServer
                     // 布局顺序问题已由 CSS order (gidx) 机制解决，即使数据晚到也会插入正确位置
                     if (!val.HasValue) continue;
 
-                    if (val.HasValue)
-                    {
-                        // [Refactor] 使用 MetricUtils 统一格式化逻辑，确保与桌面端完全一致 (包括单位换算、颜色阈值、内存显示模式)
-                        valStr = MetricUtils.GetValueStr(item.Key, val.Value, false); // false = Panel Context (Standard)
-                        unit = MetricUtils.GetUnitStr(item.Key, val.Value, MetricUtils.UnitContext.Panel);
-                        
-                        // GetProgressValue 返回 0.0-1.0，Web端通常需要 0-100
-                        pct = MetricUtils.GetProgressValue(item.Key, val.Value) * 100.0;
-                        
-                        // 状态判断 (0=Safe, 1=Warn, 2=Crit)
-                        status = MetricUtils.GetState(item.Key, val.Value);
-                    }
+                    rawValue = val;
+                    // [Refactor] 使用 MetricUtils 统一格式化逻辑，确保与桌面端完全一致 (包括单位换算、颜色阈值、内存显示模式)
+                    valStr = MetricUtils.GetValueStr(item.Key, val.Value, false); // false = Panel Context (Standard)
+                    unit = MetricUtils.GetUnitStr(item.Key, val.Value, MetricUtils.UnitContext.Panel);
+                    
+                    // GetProgressValue 返回 0.0-1.0，Web端通常需要 0-100
+                    pct = MetricUtils.GetProgressValue(item.Key, val.Value) * 100.0;
+                    
+                    // 状态判断 (0=Safe, 1=Warn, 2=Crit)
+                    status = MetricUtils.GetState(item.Key, val.Value);
                 
                     // Primary Logic
                     if (item.Key == "BAT.Percent") isPrimary = true;
@@ -249,6 +254,7 @@ namespace LiteMonitor.src.WebServer
                 writer.WriteNumber("pct", pct);
                 writer.WriteNumber("sts", status);
                 writer.WriteBoolean("primary", isPrimary);
+                if (rawValue.HasValue) writer.WriteNumber("raw", rawValue.Value);
                 writer.WriteEndObject();
             }
 

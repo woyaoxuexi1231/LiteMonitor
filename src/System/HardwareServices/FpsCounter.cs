@@ -309,13 +309,14 @@ namespace LiteMonitor.src.SystemServices
                 // 检查是否有管理员权限（PresentMon 需要管理员权限）
                 if (!IsAdministrator()) return;
                 
-                // ★★★ [修改] 如果 PresentMon 不存在，调用 DriverInstaller 自动下载 ★★★
+                // 若 PresentMon 不存在：仅在已开启 FPS 时才尝试下载；未开启则直接放弃
                 if (!File.Exists(ExePath))
                 {
                     var downloadTask = _driverInstaller.CheckAndDownloadPresentMon(silent: true);
-                    downloadTask.Wait(); 
+                    downloadTask.Wait();
                 }
-                
+
+                // 仍不存在（未开启 FPS / 用户取消 / 下载失败）→ 安静退出，不报错
                 if (!File.Exists(ExePath)) return;
 
                 // 清理可能存在的僵尸进程

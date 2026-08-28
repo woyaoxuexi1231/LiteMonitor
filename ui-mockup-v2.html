@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentry-Lite · Dashboard v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /*
+      Semantic colors (only these four):
+      gray  --muted / --empty
+      green --ok    #10b981
+      yellow --warn #fbbf24
+      red   --crit  #f87171
+      Always use var(--ok|warn|crit|muted|empty). Never invent extra hues.
+    */
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface2: #f6f7f9;
+      --border: #e4e7ee;
+      --text: #171717;
+      --muted: #737373;
+      --ok: #10b981;
+      --warn: #fbbf24;
+      --crit: #f87171;
+      --empty: #d1d5db;
+      --ok-bg: rgba(16, 185, 129, 0.14);
+      --warn-bg: rgba(251, 191, 36, 0.18);
+      --crit-bg: rgba(248, 113, 113, 0.16);
+      --font: "Inter", sans-serif;
+      --r-xl: 28px;
+      --r-lg: 20px;
+      --r-md: 14px;
+      --shadow: 0 16px 48px rgba(18, 21, 26, 0.07), 0 2px 8px rgba(18, 21, 26, 0.04);
+      --shadow-sm: 0 2px 8px rgba(18, 21, 26, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg); }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app { max-width: 960px; margin: 0 auto; padding: 28px 24px 32px; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand { display: flex; align-items: baseline; gap: 10px; }
+    .brand h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; }
+    .brand .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--ok); box-shadow: 0 0 8px var(--ok);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .brand span { font-size: 13px; color: var(--muted); }
+    .brand .ver {
+      font-size: 11px; font-weight: 600;
+      padding: 2px 7px; border-radius: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); letter-spacing: 0.02em;
+    }
+
+    .actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      font: 500 13px var(--font);
+      padding: 8px 14px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn:hover { color: var(--text); border-color: #cfd4de; background: #fff; }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .btn.danger { color: var(--crit); border-color: rgba(248, 113, 113, 0.35); }
+    .btn.danger:hover { color: var(--crit); border-color: rgba(248, 113, 113, 0.55); background: #fff; }
+    .btn.spinning .ico { display: inline-block; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Time: 30m | Day + ← date → ── */
+    .timebar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .range {
+      display: flex; gap: 3px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 4px;
+      flex-shrink: 0;
+    }
+    .range button {
+      font: 500 13px var(--font);
+      padding: 7px 14px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      transition: 0.12s;
+    }
+    .range button.on {
+      background: #fff;
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+    .day-nav-wrap {
+      position: relative;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .day-nav-wrap.show { display: flex; }
+    .day-nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 4px;
+    }
+    .day-nav .nav-btn {
+      width: 32px; height: 32px;
+      border: none; background: transparent;
+      color: var(--muted);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      font: 500 16px var(--font);
+      line-height: 1;
+      transition: 0.12s;
+    }
+    .day-nav .nav-btn:hover:not(:disabled) { color: var(--text); background: #fff; }
+    .day-nav .nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .day-nav .day-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font: 600 13px var(--font);
+      padding: 0 14px;
+      height: 32px;
+      border: none;
+      background: #fff;
+      color: var(--text);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      min-width: 148px;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+      transition: 0.12s;
+    }
+    .day-nav .day-btn:hover,
+    .day-nav .day-btn.open { background: #fff; color: var(--text); }
+
+    .btn-today {
+      font: 500 13px var(--font);
+      padding: 7px 14px;
+      height: 40px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      border-radius: var(--r-lg);
+      cursor: pointer;
+      transition: 0.12s;
+    }
+    .btn-today:hover:not(:disabled) { color: var(--text); border-color: #cfd4de; background: #fff; }
+    .btn-today:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Custom calendar ── */
+    .cal {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 40;
+      width: 280px;
+      padding: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow);
+    }
+    .cal.open { display: block; }
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 6px;
+    }
+    .cal-head .cal-title {
+      font: 600 13px var(--font);
+      color: var(--text);
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .cal-head .cal-nav {
+      width: 28px; height: 28px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      border-radius: 10px;
+      cursor: pointer;
+      font: 500 15px var(--font);
+      line-height: 1;
+      transition: 0.12s;
+    }
+    .cal-head .cal-nav:hover:not(:disabled) { color: var(--text); background: #fff; }
+    .cal-head .cal-nav:disabled { opacity: 0.3; cursor: default; }
+    .cal-dows {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-bottom: 4px;
+    }
+    .cal-dows span {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      padding: 4px 0;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      border-radius: 10px;
+      font: 500 12px var(--font);
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      transition: 0.1s;
+    }
+    .cal-day:hover:not(:disabled):not(.sel) { background: var(--surface2); }
+    .cal-day.muted { color: var(--empty); }
+    .cal-day.today:not(.sel) {
+      box-shadow: inset 0 0 0 1.5px var(--ok);
+      color: var(--ok);
+      font-weight: 600;
+    }
+    .cal-day.sel {
+      background: var(--text);
+      color: #fff;
+      font-weight: 600;
+    }
+    .cal-day:disabled {
+      color: var(--empty);
+      opacity: 0.55;
+      cursor: default;
+    }
+    .cal-foot {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cal-foot .hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .cal-foot .cal-jump {
+      font: 500 12px var(--font);
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.12s;
+    }
+    .cal-foot .cal-jump:hover:not(:disabled) { color: var(--text); background: #fff; }
+    .cal-foot .cal-jump:disabled { opacity: 0.4; cursor: default; }
+
+    .live {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 640px) {
+      .live { grid-template-columns: repeat(2, 1fr); }
+    }
+    .live-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 18px 20px;
+    }
+    .live-card .label {
+      font-size: 13px; font-weight: 500;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .live-card .value {
+      font-size: 24px; font-weight: 600;
+      letter-spacing: -0.03em; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.15s;
+    }
+    .live-card .sub {
+      font-size: 13px; margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.15s;
+    }
+    .sev-ok { color: var(--ok) !important; }
+    .sev-warn { color: var(--warn) !important; }
+    .sev-crit { color: var(--crit) !important; }
+    .live-card .sub.neutral { color: var(--muted) !important; }
+    .live-card.net .value { font-size: 22px; }
+    .live-card.net .sub { font-size: 12px; }
+
+    .stats-block {
+      display: flex; flex-direction: column; gap: 8px;
+      margin-bottom: 14px;
+    }
+    .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stat {
+      font-size: 11.5px; color: var(--muted); padding: 8px 12px;
+      font-variant-numeric: tabular-nums;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+    .stat .v { font-weight: 600; font-size: 11.5px; color: var(--text); }
+
+    .timelines {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .metric-panel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 16px 20px 14px;
+      position: relative;
+    }
+    .metric-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+      gap: 12px;
+    }
+    .metric-head .left {
+      display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap;
+    }
+    .metric-head h2 {
+      font-size: 14px; font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .metric-head .live-inline {
+      font-size: 13px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-head .live-inline .sep { color: var(--muted); font-weight: 500; margin: 0 2px; }
+    .metric-head .score {
+      font-size: 14px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+    .metric-head .score.neutral { color: var(--muted); }
+    .metric-head .totals {
+      font-size: 13px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      text-align: right;
+    }
+    .metric-head .totals .sep { color: var(--muted); font-weight: 500; margin: 0 6px; }
+    .metric-head .totals .dir { color: var(--muted); font-weight: 500; }
+
+    .bars { display: flex; gap: 3px; height: 28px; align-items: stretch; }
+    .bar {
+      flex: 1; border-radius: 999px; min-width: 0;
+      cursor: crosshair;
+      transition: transform 0.12s ease, opacity 0.12s;
+      align-self: stretch;
+    }
+    .bar.ok { background: var(--ok); }
+    .bar.warn { background: var(--warn); }
+    .bar.crit { background: var(--crit); }
+    .bar.empty { background: var(--empty); cursor: default; }
+    .bar.empty:hover, .bar.empty.on { transform: none; opacity: 1; }
+    .bar:hover, .bar.on { transform: scaleY(1.14); opacity: 0.88; }
+
+    /* NET volume bars: height encodes relative traffic */
+    .bars.volume { height: 36px; align-items: flex-end; }
+    .bars.volume .bar {
+      background: #9ca3af;
+      border-radius: 4px 4px 2px 2px;
+      min-height: 3px;
+      transform-origin: bottom center;
+      transition: opacity 0.12s, filter 0.12s;
+    }
+    .bars.volume .bar.empty {
+      background: var(--empty);
+      height: 3px !important;
+      align-self: flex-end;
+    }
+    .bars.volume .bar:hover, .bars.volume .bar.on {
+      transform: none;
+      opacity: 1;
+      filter: brightness(0.82);
+    }
+
+    .bar-axis {
+      display: flex; justify-content: space-between;
+      margin-top: 8px; font-size: 12px; color: var(--muted);
+    }
+
+    .metric-rule {
+      margin-top: 8px;
+      font-size: 11px; color: var(--muted);
+      display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap;
+    }
+    .metric-rule .c { font-weight: 600; }
+    .metric-rule .c.ok { color: var(--ok); }
+    .metric-rule .c.warn { color: var(--warn); }
+    .metric-rule .c.crit { color: var(--crit); }
+    .metric-rule .divider { opacity: 0.4; }
+
+    .bar-tip {
+      display: none; position: absolute; z-index: 20;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      pointer-events: none;
+      min-width: 220px;
+      box-shadow: var(--shadow-sm);
+    }
+    .bar-tip.show { display: block; }
+    .bar-tip .time { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .bar-tip .status-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+    .bar-tip .status-dot {
+      width: 9px; height: 9px; border-radius: 999px; flex-shrink: 0;
+    }
+    .bar-tip .status-dot.ok { background: var(--ok); }
+    .bar-tip .status-dot.warn { background: var(--warn); }
+    .bar-tip .status-dot.crit { background: var(--crit); }
+    .bar-tip .status-dot.empty { background: var(--empty); }
+    .bar-tip .status-dot.net { background: #9ca3af; }
+    .bar-tip .status-label { font-size: 14px; font-weight: 600; }
+    .bar-tip .status-label.neutral { color: var(--muted); }
+    .bar-tip .vals {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+    }
+
+    .pill {
+      display: inline-block; padding: 3px 9px; border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.3;
+    }
+    .pill.ok { background: var(--ok-bg); color: var(--ok); }
+    .pill.warn { background: var(--warn-bg); color: var(--warn); }
+    .pill.crit { background: var(--crit-bg); color: var(--crit); }
+    .pill.neutral { background: rgba(115, 115, 115, 0.1); color: var(--text); }
+
+    .legend-row {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 14px;
+      padding: 0 2px;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--muted);
+    }
+    .legend-item .swatch {
+      width: 8px; height: 8px; border-radius: 999px;
+    }
+
+    .foot {
+      margin-top: 18px; font-size: 13px; color: var(--muted);
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="brand">
+      <div class="dot" id="brandDot"></div>
+      <h1>Dashboard</h1>
+      <span>Sentry-Lite</span>
+      <span class="ver">v2</span>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" id="btnRefresh" title="Reload history for the current range"><span class="ico">↻</span> Refresh</button>
+      <button type="button" class="btn" id="btnOpenData" title="Open history data folder">Open Folder</button>
+      <button type="button" class="btn danger" id="btnClearData" title="Delete all recorded history">Clear Data</button>
+    </div>
+  </header>
+
+  <div class="timebar">
+    <div class="range" id="rangeSelector">
+      <button type="button" data-mode="live" class="on">30m</button>
+      <button type="button" data-mode="day">Day</button>
+    </div>
+    <div class="day-nav-wrap" id="dayNavWrap">
+      <div class="day-nav" id="dayNav" aria-label="Browse day">
+        <button type="button" class="nav-btn" id="btnPrevDay" title="Previous day">‹</button>
+        <button type="button" class="day-btn" id="btnDayLabel" title="Pick a date" aria-haspopup="dialog" aria-expanded="false">
+          <span id="dayLabelText">Today</span>
+        </button>
+        <button type="button" class="nav-btn" id="btnNextDay" title="Next day">›</button>
+      </div>
+      <button type="button" class="btn-today" id="btnToday" title="Jump to today">Today</button>
+      <div class="cal" id="calPopover" role="dialog" aria-label="Choose a day">
+        <div class="cal-head">
+          <button type="button" class="cal-nav" id="calPrev" aria-label="Previous month">‹</button>
+          <span class="cal-title" id="calTitle">—</span>
+          <button type="button" class="cal-nav" id="calNext" aria-label="Next month">›</button>
+        </div>
+        <div class="cal-dows" aria-hidden="true">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-foot">
+          <span class="hint">Last 90 days</span>
+          <button type="button" class="cal-jump" id="calJumpToday">Jump to today</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="live">
+    <div class="live-card cpu">
+      <div class="label">CPU</div>
+      <div class="value sev-ok" id="liveCpu">32%</div>
+      <div class="sub sev-warn" id="liveCpuT">78°C</div>
+    </div>
+    <div class="live-card gpu">
+      <div class="label">GPU</div>
+      <div class="value sev-ok" id="liveGpu">16%</div>
+      <div class="sub sev-ok" id="liveGpuT">71°C</div>
+    </div>
+    <div class="live-card ram">
+      <div class="label">RAM</div>
+      <div class="value sev-warn" id="liveRam">85%</div>
+      <div class="sub sev-warn" id="liveRamSub">13.6 / 16 GB</div>
+    </div>
+    <div class="live-card net">
+      <div class="label">NET</div>
+      <div class="value sev-ok" id="liveDn">840.0 KB/s</div>
+      <div class="sub neutral" id="liveUp">↑ 12 B/s</div>
+    </div>
+  </section>
+
+  <div class="stats-block">
+    <div class="stats" id="statsRow">
+      <div class="stat" id="statCpu">CPU —</div>
+      <div class="stat" id="statGpu">GPU —</div>
+      <div class="stat" id="statRam">RAM —</div>
+      <div class="stat" id="statNet">NET —</div>
+    </div>
+  </div>
+
+  <div class="legend-row">
+    <span class="legend-item"><span class="swatch" style="background:var(--ok)"></span>Healthy</span>
+    <span class="legend-item"><span class="swatch" style="background:var(--warn)"></span>Degraded</span>
+    <span class="legend-item"><span class="swatch" style="background:var(--crit)"></span>Critical</span>
+    <span class="legend-item"><span class="swatch" style="background:var(--empty)"></span>No data</span>
+    <span class="legend-item" style="margin-left:auto">CPU/GPU/RAM % = healthy share · NET = traffic volume</span>
+  </div>
+
+  <section class="timelines" id="timelines">
+    <div class="metric-panel" data-metric="cpu" id="panelCpu">
+      <div class="metric-head">
+        <div class="left">
+          <h2>CPU</h2>
+          <span class="live-inline">
+            <span class="sev-ok" id="inlineCpu">32%</span>
+            <span class="sep">·</span>
+            <span class="sev-warn" id="inlineCpuT">78°C</span>
+          </span>
+        </div>
+        <span class="score sev-ok" id="scoreCpu">—</span>
+      </div>
+      <div class="bars" id="barsCpu"></div>
+      <div class="bar-axis"><span class="axisL">30 min ago</span><span class="axisR">now</span></div>
+      <div class="metric-rule">
+        <span class="c ok">&lt;70%</span><span class="c warn">70–90%</span><span class="c crit">≥90%</span>
+        <span class="divider">·</span>
+        <span class="c ok">&lt;75°C</span><span class="c warn">75–85°C</span><span class="c crit">≥85°C</span>
+        <span class="divider">·</span>
+        <span>bar = worse of util / temp</span>
+      </div>
+      <div class="bar-tip" id="tipCpu">
+        <div class="time" data-role="time">—</div>
+        <div class="status-row">
+          <span class="status-dot ok" data-role="dot"></span>
+          <span class="status-label" data-role="label">—</span>
+        </div>
+        <div class="vals" data-role="vals"></div>
+      </div>
+    </div>
+
+    <div class="metric-panel" data-metric="gpu" id="panelGpu">
+      <div class="metric-head">
+        <div class="left">
+          <h2>GPU</h2>
+          <span class="live-inline">
+            <span class="sev-ok" id="inlineGpu">16%</span>
+            <span class="sep">·</span>
+            <span class="sev-ok" id="inlineGpuT">71°C</span>
+          </span>
+        </div>
+        <span class="score sev-ok" id="scoreGpu">—</span>
+      </div>
+      <div class="bars" id="barsGpu"></div>
+      <div class="bar-axis"><span class="axisL">30 min ago</span><span class="axisR">now</span></div>
+      <div class="metric-rule">
+        <span class="c ok">&lt;70%</span><span class="c warn">70–90%</span><span class="c crit">≥90%</span>
+        <span class="divider">·</span>
+        <span class="c ok">&lt;75°C</span><span class="c warn">75–85°C</span><span class="c crit">≥85°C</span>
+        <span class="divider">·</span>
+        <span>bar = worse of util / temp</span>
+      </div>
+      <div class="bar-tip" id="tipGpu">
+        <div class="time" data-role="time">—</div>
+        <div class="status-row">
+          <span class="status-dot ok" data-role="dot"></span>
+          <span class="status-label" data-role="label">—</span>
+        </div>
+        <div class="vals" data-role="vals"></div>
+      </div>
+    </div>
+
+    <div class="metric-panel" data-metric="ram" id="panelRam">
+      <div class="metric-head">
+        <div class="left">
+          <h2>RAM</h2>
+          <span class="live-inline">
+            <span class="sev-warn" id="inlineRam">85%</span>
+            <span class="sep">·</span>
+            <span class="sev-warn" id="inlineRamSub">13.6 / 16 GB</span>
+          </span>
+        </div>
+        <span class="score sev-warn" id="scoreRam">—</span>
+      </div>
+      <div class="bars" id="barsRam"></div>
+      <div class="bar-axis"><span class="axisL">30 min ago</span><span class="axisR">now</span></div>
+      <div class="metric-rule">
+        <span class="c ok">&lt;80%</span><span class="c warn">80–90%</span><span class="c crit">≥90%</span>
+      </div>
+      <div class="bar-tip" id="tipRam">
+        <div class="time" data-role="time">—</div>
+        <div class="status-row">
+          <span class="status-dot ok" data-role="dot"></span>
+          <span class="status-label" data-role="label">—</span>
+        </div>
+        <div class="vals" data-role="vals"></div>
+      </div>
+    </div>
+
+    <div class="metric-panel" data-metric="net" id="panelNet">
+      <div class="metric-head">
+        <div class="left">
+          <h2>NET</h2>
+          <span class="live-inline">
+            <span id="inlineNetPeriod">period total</span>
+          </span>
+        </div>
+        <div class="totals" id="netTotals">
+          <span class="dir">↓</span> <span id="netDnTotal">—</span>
+          <span class="sep">·</span>
+          <span class="dir">↑</span> <span id="netUpTotal">—</span>
+        </div>
+      </div>
+      <div class="bars volume" id="barsNet"></div>
+      <div class="bar-axis"><span class="axisL">30 min ago</span><span class="axisR">now</span></div>
+      <div class="metric-rule">
+        <span>bar height = relative traffic in that period</span>
+        <span class="divider">·</span>
+        <span>totals = sum of ↓ / ↑ for selected range</span>
+      </div>
+      <div class="bar-tip" id="tipNet">
+        <div class="time" data-role="time">—</div>
+        <div class="status-row">
+          <span class="status-dot net" data-role="dot"></span>
+          <span class="status-label" data-role="label">Traffic</span>
+        </div>
+        <div class="vals" data-role="vals"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span id="footInfo">—</span>
+    <span id="clock">—</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+const HISTORY_DAYS = 90; /* how far back you can go */
+const ST = { ok: { label: "Healthy" }, warn: { label: "Degraded" }, crit: { label: "Critical" }, empty: { label: "No data" } };
+const LEVEL = { ok: 0, warn: 1, crit: 2 };
+
+const tempCpuOn = true;
+const tempGpuOn = true;
+
+/** @type {"live"|"day"} */
+let viewMode = "live";
+/** selected day as YYYY-MM-DD */
+let selectedDay = null;
+let currentBuckets = [];
+let netMaxBytes = 1;
+let busy = false;
+
+function sevPct(v) { if (v >= 90) return "crit"; if (v >= 70) return "warn"; return "ok"; }
+function sevRam(v) { if (v >= 90) return "crit"; if (v >= 80) return "warn"; return "ok"; }
+function sevTemp(v) { if (v >= 85) return "crit"; if (v >= 75) return "warn"; return "ok"; }
+function worse(a, b) { return LEVEL[a] >= LEVEL[b] ? a : b; }
+function healthyRatioLevel(okRatio) { if (okRatio >= 85) return "ok"; if (okRatio >= 65) return "warn"; return "crit"; }
+function sevCls(s) { return "sev-" + s; }
+
+function fmtPct(v) { return v == null || v < 0 ? "—" : Math.round(v) + "%"; }
+function fmtTemp(v) { return v == null || v < 0 ? "—" : Math.round(v) + "°C"; }
+function fmtBytes(n) {
+  if (n == null || n < 0) return "—";
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + " TB";
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + " GB";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + " MB";
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + " KB";
+  return Math.round(n) + " B";
+}
+function pill(text, sev) { return `<span class="pill ${sev}">${text}</span>`; }
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+function toDayKey(d) {
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+}
+function parseDayKey(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function startOfDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function todayKey() { return toDayKey(startOfDay(new Date())); }
+function minDayKey() {
+  const d = startOfDay(new Date());
+  d.setDate(d.getDate() - HISTORY_DAYS);
+  return toDayKey(d);
+}
+
+function formatDayTitle(key) {
+  const d = parseDayKey(key);
+  const today = startOfDay(new Date());
+  if (isSameDay(d, today)) return "Today";
+  const yest = new Date(today); yest.setDate(today.getDate() - 1);
+  if (isSameDay(d, yest)) return "Yesterday";
+  return DOW[d.getDay()] + " · " + MON[d.getMonth()] + " " + d.getDate();
+}
+
+function syncDayNav() {
+  const wrap = $("dayNavWrap");
+  const todayBtn = $("btnToday");
+  const isDay = viewMode === "day";
+  wrap.classList.toggle("show", isDay);
+  if (!isDay) {
+    closeCal();
+    return;
+  }
+
+  if (!selectedDay) selectedDay = todayKey();
+  const today = todayKey();
+  $("dayLabelText").textContent = formatDayTitle(selectedDay);
+
+  $("btnPrevDay").disabled = selectedDay <= minDayKey();
+  $("btnNextDay").disabled = selectedDay >= today;
+  todayBtn.disabled = selectedDay === today;
+}
+
+function setMode(mode, dayKey) {
+  viewMode = mode;
+  if (mode === "day") selectedDay = dayKey || selectedDay || todayKey();
+  $("rangeSelector").querySelectorAll("button").forEach(b => {
+    b.classList.toggle("on", b.dataset.mode === mode);
+  });
+  syncDayNav();
+  requestHisto();
+}
+
+function shiftDay(delta) {
+  const d = parseDayKey(selectedDay);
+  d.setDate(d.getDate() + delta);
+  const key = toDayKey(d);
+  if (key > todayKey() || key < minDayKey()) return;
+  setMode("day", key);
+}
+
+/* ── Custom calendar ── */
+let calMonth = null; /* Date at 1st of visible month */
+let calOpen = false;
+
+function monthBounds() {
+  const max = startOfDay(new Date());
+  const min = parseDayKey(minDayKey());
+  return { min, max };
+}
+
+function closeCal() {
+  calOpen = false;
+  $("calPopover").classList.remove("open");
+  $("btnDayLabel").classList.remove("open");
+  $("btnDayLabel").setAttribute("aria-expanded", "false");
+}
+
+function openCal() {
+  const base = parseDayKey(selectedDay || todayKey());
+  calMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+  calOpen = true;
+  $("calPopover").classList.add("open");
+  $("btnDayLabel").classList.add("open");
+  $("btnDayLabel").setAttribute("aria-expanded", "true");
+  renderCal();
+}
+
+function toggleCal() {
+  if (calOpen) closeCal();
+  else openCal();
+}
+
+function renderCal() {
+  if (!calMonth) return;
+  const { min, max } = monthBounds();
+  const y = calMonth.getFullYear();
+  const m = calMonth.getMonth();
+  $("calTitle").textContent = MON[m] + " " + y;
+
+  const first = new Date(y, m, 1);
+  const startPad = first.getDay(); /* 0=Sun */
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+
+  const grid = $("calGrid");
+  grid.innerHTML = "";
+
+  const cells = [];
+  for (let i = 0; i < startPad; i++) {
+    const day = prevDays - startPad + 1 + i;
+    cells.push({ date: new Date(y, m - 1, day), muted: true });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ date: new Date(y, m, d), muted: false });
+  }
+  while (cells.length % 7 !== 0) {
+    const n = cells.length - startPad - daysInMonth + 1;
+    cells.push({ date: new Date(y, m + 1, n), muted: true });
+  }
+
+  const today = startOfDay(new Date());
+  const sel = selectedDay ? parseDayKey(selectedDay) : null;
+
+  cells.forEach(cell => {
+    const key = toDayKey(cell.date);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cal-day";
+    btn.textContent = String(cell.date.getDate());
+    if (cell.muted) btn.classList.add("muted");
+    if (isSameDay(cell.date, today)) btn.classList.add("today");
+    if (sel && isSameDay(cell.date, sel)) btn.classList.add("sel");
+
+    const sod = startOfDay(cell.date);
+    const outOfRange = sod < min || sod > max;
+    if (outOfRange) {
+      btn.disabled = true;
+    } else {
+      btn.addEventListener("click", () => {
+        closeCal();
+        setMode("day", key);
+      });
+    }
+    grid.appendChild(btn);
+  });
+
+  /* month nav bounds: disable if entire month outside range */
+  const monthStart = new Date(y, m, 1);
+  const monthEnd = new Date(y, m + 1, 0);
+  $("calPrev").disabled = monthEnd < min;
+  $("calNext").disabled = monthStart > max;
+  $("calJumpToday").disabled = selectedDay === todayKey();
+}
+
+function shiftCalMonth(delta) {
+  if (!calMonth) return;
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + delta, 1);
+  renderCal();
+}
+
+const rng = s => { const x = Math.sin(s * 777.1) * 9999; return x - Math.floor(x); };
+
+function generateSeries(N, base, amp, freq, spike, seed) {
+  const a = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / Math.max(1, N - 1);
+    let v = base + Math.sin(t * Math.PI * 2 * freq) * amp + (rng(i + seed) - 0.5) * amp * 0.2;
+    if (spike != null && t > spike) v += amp * 1.4 * Math.sin((t - spike) / (1 - spike) * Math.PI);
+    a.push(Math.max(0, v));
+  }
+  for (let p = 0; p < 4; p++) {
+    for (let i = 1; i < N - 1; i++) a[i] = a[i - 1] * 0.25 + a[i] * 0.5 + a[i + 1] * 0.25;
+  }
+  return a;
+}
+
+function daySeed(key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return Math.abs(h) % 10000;
+}
+
+function generateDataset(N, seed) {
+  return {
+    cpu: generateSeries(N, 28, 14, 1.3, 0.74, seed + 1),
+    gpu: generateSeries(N, 12, 7, 1.0, 0.8, seed + 2),
+    ram: generateSeries(N, 84, 2.5, 0.5, null, seed + 3),
+    cpuT: generateSeries(N, 74, 14, 1.1, 0.74, seed + 4),
+    gpuT: generateSeries(N, 68, 12, 0.9, 0.8, seed + 5),
+    /* bytes transferred in each sample window (mock) */
+    dnB: generateSeries(N, 18e6, 12e6, 1.8, 0.55, seed + 6),
+    upB: generateSeries(N, 2.2e6, 1.4e6, 2.1, 0.4, seed + 7),
+  };
+}
+
+function avg(arr, a, z) {
+  const slice = arr.slice(a, z);
+  if (!slice.length) return 0;
+  return slice.reduce((s, v) => s + v, 0) / slice.length;
+}
+function sum(arr, a, z) {
+  return arr.slice(a, z).reduce((s, v) => s + v, 0);
+}
+
+function levelForCpu(cpuA, cpuTA) {
+  let s = sevPct(cpuA);
+  if (tempCpuOn && cpuTA >= 0) s = worse(s, sevTemp(cpuTA));
+  return s;
+}
+function levelForGpu(gpuA, gpuTA) {
+  let s = sevPct(gpuA);
+  if (tempGpuOn && gpuTA >= 0) s = worse(s, sevTemp(gpuTA));
+  return s;
+}
+
+function buildBuckets() {
+  const isLive = viewMode === "live";
+  const B = isLive ? 30 : 24;
+  const N = Math.max(B * 4, 60);
+  const seed = isLive ? 42 : daySeed(selectedDay);
+  const data = generateDataset(N, seed);
+  const buckets = [];
+
+  const todayKey = toDayKey(startOfDay(new Date()));
+  const isToday = !isLive && selectedDay === todayKey;
+  const nowHour = new Date().getHours();
+
+  for (let i = 0; i < B; i++) {
+    /* live: first few empty; day view for today: future hours empty */
+    const empty = isLive
+      ? (i < 3)
+      : (isToday && i > nowHour);
+
+    if (empty) {
+      buckets.push({
+        empty: true, hour: i,
+        cpuA: -1, gpuA: -1, ramA: -1, cpuTA: -1, gpuTA: -1,
+        dnB: 0, upB: 0,
+        cpuL: "empty", gpuL: "empty", ramL: "empty",
+      });
+      continue;
+    }
+
+    const a = Math.floor(i / B * N);
+    const z = Math.floor((i + 1) / B * N);
+    let cpuA = avg(data.cpu, a, z);
+    let gpuA = avg(data.gpu, a, z);
+    let ramA = avg(data.ram, a, z);
+    let cpuTA = avg(data.cpuT, a, z);
+    let gpuTA = avg(data.gpuT, a, z);
+    let dnB = sum(data.dnB, a, z);
+    let upB = sum(data.upB, a, z);
+
+    /* scripted incidents */
+    if (isLive && (i === 12 || i === 13)) { cpuA = 78; cpuTA = 79; }
+    if (isLive && (i === 18 || i === 19)) { ramA = 91; }
+    if (isLive && (i === 24 || i === 25)) { cpuA = 94; cpuTA = 88; gpuA = 82; gpuTA = 81; }
+    if (!isLive && (i === 14 || i === 15)) { gpuA = 76; gpuTA = 78; dnB *= 2.4; }
+    if (!isLive && i === 21) { cpuA = 92; ramA = 93; }
+
+    buckets.push({
+      empty: false, hour: i,
+      cpuA, gpuA, ramA, cpuTA, gpuTA, dnB, upB,
+      cpuL: levelForCpu(cpuA, cpuTA),
+      gpuL: levelForGpu(gpuA, gpuTA),
+      ramL: sevRam(ramA),
+    });
+  }
+
+  const withData = buckets.filter(b => !b.empty);
+  const dnTotal = withData.reduce((s, b) => s + b.dnB, 0);
+  const upTotal = withData.reduce((s, b) => s + b.upB, 0);
+
+  const stats = {
+    cpu: { max: Math.max(...data.cpu), avg: avg(data.cpu, 0, N) },
+    cpuT: { max: Math.max(...data.cpuT), avg: avg(data.cpuT, 0, N) },
+    gpu: { max: Math.max(...data.gpu), avg: avg(data.gpu, 0, N) },
+    gpuT: { max: Math.max(...data.gpuT), avg: avg(data.gpuT, 0, N) },
+    ram: { max: Math.max(...data.ram), avg: avg(data.ram, 0, N) },
+    net: { dn: dnTotal, up: upTotal },
+  };
+
+  return { buckets, stats };
+}
+
+function axisLabels() {
+  if (viewMode === "live") return { L: "30 min ago", R: "now" };
+  return { L: "00:00", R: "24:00" };
+}
+
+function renderHealthBars(metric, buckets) {
+  const id = metric[0].toUpperCase() + metric.slice(1);
+  const barsEl = $("bars" + id);
+  const scoreEl = $("score" + id);
+  const levelKey = metric + "L";
+
+  barsEl.innerHTML = "";
+  buckets.forEach((b, i) => {
+    const el = document.createElement("div");
+    el.className = "bar " + (b.empty ? "empty" : b[levelKey]);
+    el.dataset.i = i;
+    el.dataset.metric = metric;
+    barsEl.appendChild(el);
+  });
+
+  const withData = buckets.filter(b => !b.empty);
+  if (!withData.length) {
+    scoreEl.textContent = "—";
+    scoreEl.className = "score neutral";
+  } else {
+    const okRatio = withData.filter(b => b[levelKey] === "ok").length / withData.length * 100;
+    scoreEl.textContent = okRatio.toFixed(1) + "%";
+    scoreEl.className = "score " + sevCls(healthyRatioLevel(okRatio));
+  }
+}
+
+function renderNetBars(buckets) {
+  const barsEl = $("barsNet");
+  barsEl.innerHTML = "";
+  const withData = buckets.filter(b => !b.empty);
+  netMaxBytes = Math.max(1, ...withData.map(b => b.dnB + b.upB));
+
+  buckets.forEach((b, i) => {
+    const el = document.createElement("div");
+    if (b.empty) {
+      el.className = "bar empty";
+      el.style.height = "3px";
+    } else {
+      const total = b.dnB + b.upB;
+      const h = Math.max(4, Math.round((total / netMaxBytes) * 36));
+      el.className = "bar";
+      el.style.height = h + "px";
+    }
+    el.dataset.i = i;
+    el.dataset.metric = "net";
+    barsEl.appendChild(el);
+  });
+
+  $("netDnTotal").textContent = fmtBytes(withData.reduce((s, b) => s + b.dnB, 0));
+  $("netUpTotal").textContent = fmtBytes(withData.reduce((s, b) => s + b.upB, 0));
+  $("inlineNetPeriod").textContent = viewMode === "live" ? "last 30 min" : "day total";
+}
+
+function renderAll(buckets) {
+  currentBuckets = buckets;
+  ["cpu", "gpu", "ram"].forEach(m => renderHealthBars(m, buckets));
+  renderNetBars(buckets);
+  const ax = axisLabels();
+  document.querySelectorAll(".axisL").forEach(el => { el.textContent = ax.L; });
+  document.querySelectorAll(".axisR").forEach(el => { el.textContent = ax.R; });
+  $("footInfo").textContent =
+    buckets.length + " buckets · " +
+    (viewMode === "live" ? "live 30m" : selectedDay + " 24h") +
+    " · per-metric health + net volume";
+}
+
+function renderStats(s) {
+  const val = c => `<span class="v ${c.cls}">${c.v}</span>`;
+  const cpu = s.cpu, cpuT = s.cpuT, gpu = s.gpu, gpuT = s.gpuT, ram = s.ram;
+  $("statCpu").innerHTML =
+    `CPU  max ${val({ v: fmtPct(cpu.max), cls: sevCls(sevPct(cpu.max)) })}` +
+    (tempCpuOn ? ` / ${val({ v: fmtTemp(cpuT.max), cls: sevCls(sevTemp(cpuT.max)) })}` : "") +
+    `  avg ${val({ v: fmtPct(cpu.avg), cls: sevCls(sevPct(cpu.avg)) })}` +
+    (tempCpuOn ? ` / ${val({ v: fmtTemp(cpuT.avg), cls: sevCls(sevTemp(cpuT.avg)) })}` : "");
+  $("statGpu").innerHTML =
+    `GPU  max ${val({ v: fmtPct(gpu.max), cls: sevCls(sevPct(gpu.max)) })}` +
+    (tempGpuOn ? ` / ${val({ v: fmtTemp(gpuT.max), cls: sevCls(sevTemp(gpuT.max)) })}` : "") +
+    `  avg ${val({ v: fmtPct(gpu.avg), cls: sevCls(sevPct(gpu.avg)) })}` +
+    (tempGpuOn ? ` / ${val({ v: fmtTemp(gpuT.avg), cls: sevCls(sevTemp(gpuT.avg)) })}` : "");
+  $("statRam").innerHTML =
+    `RAM  max ${val({ v: fmtPct(ram.max), cls: sevCls(sevRam(ram.max)) })}` +
+    `  avg ${val({ v: fmtPct(ram.avg), cls: sevCls(sevRam(ram.avg)) })}`;
+  $("statNet").innerHTML =
+    `NET  ↓ <span class="v">${fmtBytes(s.net.dn)}</span>` +
+    `  ↑ <span class="v">${fmtBytes(s.net.up)}</span>` +
+    `  Σ <span class="v">${fmtBytes(s.net.dn + s.net.up)}</span>`;
+}
+
+function setRefreshBusy(on) {
+  const btn = $("btnRefresh");
+  btn.disabled = on;
+  btn.classList.toggle("spinning", on);
+}
+
+function requestHisto() {
+  if (busy) return;
+  busy = true;
+  setRefreshBusy(true);
+  setTimeout(() => {
+    const { buckets, stats } = buildBuckets();
+    renderAll(buckets);
+    renderStats(stats);
+    busy = false;
+    setRefreshBusy(false);
+  }, 180);
+}
+
+function bucketTimeLabel(i, n) {
+  if (viewMode === "day") {
+    return pad2(i) + ":00 – " + pad2(i === 23 ? 24 : i + 1) + ":00";
+  }
+  const frac = 1 - i / n;
+  const mins = Math.round(frac * 30);
+  return mins > 0 ? mins + " min ago" : "Now";
+}
+
+function tipContent(metric, b) {
+  if (b.empty) return [pill("No samples", "neutral")];
+  if (metric === "cpu") {
+    return [
+      pill(fmtPct(b.cpuA) + " util", sevPct(b.cpuA)),
+      tempCpuOn ? pill(fmtTemp(b.cpuTA), sevTemp(b.cpuTA)) : pill("Temp unavailable", "neutral"),
+    ];
+  }
+  if (metric === "gpu") {
+    return [
+      pill(fmtPct(b.gpuA) + " util", sevPct(b.gpuA)),
+      tempGpuOn ? pill(fmtTemp(b.gpuTA), sevTemp(b.gpuTA)) : pill("Temp unavailable", "neutral"),
+    ];
+  }
+  if (metric === "ram") {
+    return [pill(fmtPct(b.ramA) + " used", sevRam(b.ramA))];
+  }
+  /* net */
+  return [
+    pill("↓ " + fmtBytes(b.dnB), "neutral"),
+    pill("↑ " + fmtBytes(b.upB), "neutral"),
+    pill("Σ " + fmtBytes(b.dnB + b.upB), "neutral"),
+  ];
+}
+
+function bindBars(metric) {
+  const id = metric[0].toUpperCase() + metric.slice(1);
+  const panel = $("panel" + id);
+  const barsEl = $("bars" + id);
+  const tip = $("tip" + id);
+  const levelKey = metric + "L";
+
+  barsEl.addEventListener("mousemove", e => {
+    const bar = e.target.closest(".bar");
+    if (!bar) return;
+    barsEl.querySelectorAll(".bar").forEach(b => b.classList.remove("on"));
+    bar.classList.add("on");
+
+    const b = currentBuckets[+bar.dataset.i];
+    if (!b) return;
+    const i = +bar.dataset.i;
+    const isNet = metric === "net";
+    const lk = b.empty ? "empty" : (isNet ? "net" : b[levelKey]);
+    const labelText = b.empty ? "No data" : (isNet ? "Traffic" : ST[b[levelKey]].label);
+
+    tip.querySelector('[data-role="time"]').textContent = bucketTimeLabel(i, currentBuckets.length);
+    tip.querySelector('[data-role="dot"]').className = "status-dot " + (b.empty ? "empty" : (isNet ? "net" : b[levelKey]));
+    const label = tip.querySelector('[data-role="label"]');
+    label.textContent = labelText;
+    label.className = "status-label " + (b.empty || isNet ? "neutral" : sevCls(b[levelKey]));
+    tip.querySelector('[data-role="vals"]').innerHTML = tipContent(metric, b).join("");
+
+    tip.classList.add("show");
+    const hr = panel.getBoundingClientRect();
+    const br = bar.getBoundingClientRect();
+    let left = br.left - hr.left + br.width / 2 - (tip.offsetWidth || 200) / 2;
+    left = Math.max(4, Math.min(left, hr.width - (tip.offsetWidth || 200) - 4));
+    tip.style.left = left + "px";
+    tip.style.bottom = hr.height - (br.top - hr.top) + 10 + "px";
+  });
+
+  barsEl.addEventListener("mouseleave", () => {
+    tip.classList.remove("show");
+    barsEl.querySelectorAll(".bar").forEach(b => b.classList.remove("on"));
+  });
+}
+
+["cpu", "gpu", "ram", "net"].forEach(bindBars);
+
+$("btnRefresh").addEventListener("click", () => requestHisto());
+$("btnOpenData").addEventListener("click", () => {
+  alert("Mockup only — in the app this opens the history data folder.");
+});
+$("btnClearData").addEventListener("click", () => {
+  if (!confirm("Delete all recorded history data? This cannot be undone.")) return;
+  requestHisto();
+});
+
+$("rangeSelector").querySelectorAll("button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.mode === "live") setMode("live");
+    else setMode("day", selectedDay || todayKey());
+  });
+});
+
+$("btnPrevDay").addEventListener("click", () => shiftDay(-1));
+$("btnNextDay").addEventListener("click", () => shiftDay(1));
+$("btnToday").addEventListener("click", () => { closeCal(); setMode("day", todayKey()); });
+
+$("btnDayLabel").addEventListener("click", e => {
+  e.stopPropagation();
+  toggleCal();
+});
+$("calPopover").addEventListener("click", e => e.stopPropagation());
+$("calPrev").addEventListener("click", () => shiftCalMonth(-1));
+$("calNext").addEventListener("click", () => shiftCalMonth(1));
+$("calJumpToday").addEventListener("click", () => {
+  closeCal();
+  setMode("day", todayKey());
+});
+document.addEventListener("click", () => { if (calOpen) closeCal(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && calOpen) closeCal();
+});
+
+function tick() {
+  $("clock").textContent = new Date().toLocaleTimeString("en-GB", { hour12: false });
+}
+setInterval(tick, 1000);
+tick();
+selectedDay = todayKey();
+syncDayNav();
+requestHisto();
+</script>
+</body>
+</html>

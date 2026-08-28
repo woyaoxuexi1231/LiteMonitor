@@ -9,51 +9,50 @@ namespace LiteMonitor.src.Core.Actions
     {
         public static void OpenWebMonitor(Settings cfg)
         {
-            // 不再阻断，只尝试获取运行端口，如果没运行则使用配置端口
+            if (cfg == null) return;
+
+            // 双击打开时自动启用并启动网页服务
+            if (!cfg.WebServerEnabled)
+            {
+                cfg.WebServerEnabled = true;
+                cfg.Save();
+            }
+
+            AppActions.ApplyWebServer(cfg);
+
             int port = 0;
-            
             if (LiteWebServer.Instance != null && LiteWebServer.Instance.IsRunning)
             {
                 port = LiteWebServer.Instance.CurrentRunningPort;
             }
-
-            // 如果服务没运行或端口无效，使用配置端口
-            if (port <= 0 && cfg != null)
+            if (port <= 0)
             {
                 port = cfg.WebServerPort;
             }
 
-            if (port > 0)
-            {
-                string host = "localhost";
-                // 优先使用内网IP
-                if (HardwareMonitor.Instance != null)
-                {
-                    string ip = HardwareMonitor.Instance.GetNetworkIP();
-                    if (!string.IsNullOrEmpty(ip) && ip != "0.0.0.0" && ip != "127.0.0.1") 
-                    {
-                        host = ip;
-                    }
-                }
+            if (port <= 0) return;
 
-                string url = $"http://{host}:{port}";
+            // 本机打开优先 localhost，避免防火墙/多网卡导致打不开
+            string url = $"http://localhost:{port}";
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Failed to open web monitor: " + ex.Message);
                 try
                 {
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                }
-                catch (Exception ex)
-                {
-                    // 如果使用 IP 打开失败，尝试回退到 localhost
-                    if (host != "localhost")
+                    if (HardwareMonitor.Instance != null)
                     {
-                         try 
-                         {
-                             Process.Start(new ProcessStartInfo($"http://localhost:{port}") { UseShellExecute = true });
-                         }
-                         catch { }
+                        string ip = HardwareMonitor.Instance.GetNetworkIP();
+                        if (!string.IsNullOrEmpty(ip) && ip != "0.0.0.0" && ip != "127.0.0.1")
+                        {
+                            Process.Start(new ProcessStartInfo($"http://{ip}:{port}") { UseShellExecute = true });
+                        }
                     }
-                    Debug.WriteLine("Failed to open web monitor: " + ex.Message);
                 }
+                catch { }
             }
         }
     }
