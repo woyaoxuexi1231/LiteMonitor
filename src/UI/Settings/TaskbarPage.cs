@@ -100,7 +100,7 @@ namespace LiteMonitor.src.UI.SettingsPage
 
             // ★★★ 修复：增加 Config? 判空和默认值 ★★★
             var chkShow = group.AddToggle(this, "Menu.TaskbarShow", 
-                () => Config?.ShowTaskbar ?? true, 
+                () => Config?.ShowTaskbar ?? false, 
                 v => { if(Config!=null) Config.ShowTaskbar = v; });
             chkShow.CheckedChanged += (s, e) => { if(Config!=null) EnsureSafeVisibility(null, null, chkShow); };
 

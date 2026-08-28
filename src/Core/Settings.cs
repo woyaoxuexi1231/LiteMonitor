@@ -141,8 +141,11 @@ namespace LiteMonitor
         public bool WebServerEnabled { get; set; } = true;
         public int WebServerPort { get; set; } = 5000; // 默认端口
         public string WebServerPassword { get; set; } = ""; // 访问密码
-        /// <summary>启动后自动打开网页仪表盘</summary>
-        public bool OpenWebOnStartup { get; set; } = true;
+        /// <summary>启动后自动打开网页仪表盘（已废弃：启动不再自动打开浏览器）</summary>
+        public bool OpenWebOnStartup { get; set; } = false;
+
+        /// <summary>一次性迁移：本版本默认隐藏看板/任务栏、不自动开网页</summary>
+        public bool StartupDefaultsApplied { get; set; } = false;
         
         public ThresholdsSet Thresholds { get; set; } = new ThresholdsSet();
 

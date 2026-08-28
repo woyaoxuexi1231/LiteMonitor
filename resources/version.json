@@ -1,6 +1,6 @@
 {
-  "version": "1.3.6",
-  "changelog": "修正1.3.5版本部分问题\n1，新增监控历史，可查看温度、负载、功耗、频率、FPS 等历史趋势\n2，支持多显卡切换\n3，更新硬件核心库到最新正式版\n4，优化并修复部分已知问题",
-  "releaseDate": "2026-05-16",
-  "downloadUrl": "https://github.com/Diorser/LiteMonitor/releases"
+  "version": "1.3.7",
+  "changelog": "1. 网页仪表盘 v2：实时卡片、英文胶囊条、分项时间线与日期选择\n2. 默认隐藏看板与任务栏看板，启动不再自动打开浏览器\n3. 托盘双击改为打开网页端\n4. 修复电池颜色（高电量不应为红）、流量柱倒挂，并移除无用的健康占比",
+  "releaseDate": "2026-08-28",
+  "downloadUrl": "https://github.com/woyaoxuexi1231/LiteMonitor/releases"
 }

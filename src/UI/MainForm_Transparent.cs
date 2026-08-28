@@ -165,10 +165,9 @@ namespace LiteMonitor
             _bizHelper = new MainFormBizHelper(this, _cfg, _ui, _winHelper);
             _bizHelper.Initialize();
 
-            // === 渐入透明度 (还原原始代码逻辑) ===
-            // 原始代码是在构造函数末尾启动 Task
-            // 之前解耦时移到了 OnShown 里，这可能导致时序差异（OnShown 之前会有一瞬间的默认绘制）
-            _winHelper.StartFadeIn(_cfg.Opacity);
+            // === 渐入透明度：隐藏主面板时不要渐显，避免启动闪一下看板 ===
+            if (!_cfg.HideMainForm)
+                _winHelper.StartFadeIn(_cfg.Opacity);
 
             // 3. 事件绑定
             BindEvents();
@@ -319,7 +318,7 @@ namespace LiteMonitor
 
             if (_cfg.ShowTaskbar) ToggleTaskbar(true);
 
-            // 启动 WebServer
+            // 启动 WebServer（后台监听即可；不自动弹浏览器，网页只由托盘双击/菜单打开）
             if (_cfg.WebServerEnabled)
             {
                 if (src.WebServer.LiteWebServer.Instance?.Start(out string err) == false)
@@ -327,15 +326,6 @@ namespace LiteMonitor
                      ShowNotification("WebServer Error", 
                          (_cfg.Language == "zh" ? "Web服务启动失败: " : "Web Server Failed: ") + err, 
                          ToolTipIcon.Error);
-                }
-                else if (_cfg.OpenWebOnStartup)
-                {
-                    // 稍延迟，确保端口已监听
-                    this.BeginInvoke(new Action(async () =>
-                    {
-                        await Task.Delay(400);
-                        WebActions.OpenWebMonitor(_cfg);
-                    }));
                 }
             }
             // 这样既检查了驱动，也检查了更新，以及置顶 透明度 穿透 等，而且时机完美（窗口显示后）

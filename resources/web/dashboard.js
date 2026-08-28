@@ -36,9 +36,9 @@ function qs() { return pwd ? "?pwd=" + encodeURIComponent(pwd) : ""; }
 
 function sevPct(v){ if(v==null||v<0)return"neutral"; if(v>=90)return"crit"; if(v>=70)return"warn"; return"ok"; }
 function sevRam(v){ if(v==null||v<0)return"neutral"; if(v>=90)return"crit"; if(v>=80)return"warn"; return"ok"; }
+function sevBat(v){ if(v==null||v<0)return"neutral"; if(v<=20)return"crit"; if(v<=60)return"warn"; return"ok"; }
 function sevTemp(v){ if(v==null||v<0)return"neutral"; if(v>=85)return"crit"; if(v>=75)return"warn"; return"ok"; }
 function worse(a,b){ if(a==="neutral")return b; if(b==="neutral")return a; return LEVEL[a]>=LEVEL[b]?a:b; }
-function healthyRatioLevel(r){ if(r>=85)return"ok"; if(r>=65)return"warn"; return"crit"; }
 function sevCls(s){ return s==="neutral"?"neutral":("sev-"+s); }
 function stsToSev(sts){ return sts===2?"crit":sts===1?"warn":sts===0?"ok":"neutral"; }
 function pad2(n){ return String(n).padStart(2,"0"); }
@@ -264,6 +264,7 @@ function levelFor(panel, b){
     return lv==="neutral"?"ok":lv;
   }
   if(panel.sev==="ram") return p==null?"empty":sevRam(p);
+  if(panel.sev==="bat") return p==null?"empty":sevBat(p);
   if(panel.sev==="temp") return p==null?"empty":sevTemp(p);
   if(panel.sev==="pct") return p==null?"empty":sevPct(p);
   return p==null?"empty":"ok";
@@ -287,7 +288,7 @@ function ensurePanels(panels){
     el.dataset.kind=p.kind;
     const right = p.kind==="volume"
       ? `<div class="totals" data-role="totals"><span class="dir">${p.aLabel||"A"}</span> <span data-role="totalA">—</span><span class="sep">·</span><span class="dir">${p.bLabel||"B"}</span> <span data-role="totalB">—</span></div>`
-      : `<span class="score neutral" data-role="score">—</span>`;
+      : "";
     el.innerHTML =
       `<div class="metric-head"><div class="left"><h2>${p.title}</h2><span class="live-inline" data-role="inline">—</span></div>${right}</div>`+
       `<div class="bars ${p.kind==="volume"?"volume":""}" data-role="bars"></div>`+
@@ -362,21 +363,12 @@ function renderTimelines(data){
       const tA=el.querySelector('[data-role="totalA"]'); const tB=el.querySelector('[data-role="totalB"]');
       if(tA) tA.textContent=fmtBytes(totA); if(tB) tB.textContent=fmtBytes(totB);
     } else {
-      const scoreEl=el.querySelector('[data-role="score"]');
-      let ok=0, n=0;
       currentBuckets.forEach((b,i)=>{
         const lv=levelFor(panel,b);
         const bar=document.createElement("div");
         bar.className="bar "+(lv==="net"?"ok":lv);
         bar.dataset.i=i; barsEl.appendChild(bar);
-        if(!b.empty && lv!=="empty"){ n++; if(lv==="ok") ok++; }
       });
-      if(!n){ scoreEl.textContent="—"; scoreEl.className="score neutral"; }
-      else {
-        const ratio=ok/n*100;
-        scoreEl.textContent=ratio.toFixed(1)+"%";
-        scoreEl.className="score "+sevCls(healthyRatioLevel(ratio));
-      }
     }
   });
   updatePanelInlines();
@@ -399,7 +391,7 @@ function renderStats(stats){
     const s=stats[key]; if(!s||(s.max==null&&s.avg==null)) return;
     if((s.max??-1)<0 && (s.avg??-1)<0) return;
     const fmt = key.includes("Temp")?fmtTemp : (isPct?fmtPct:(v=>fmtValue(v, key.includes("Power")?"W":(key==="FPS"?"FPS":"auto"))));
-    const sev = key.includes("Temp")?sevTemp:(isPct?(key.includes("MEM")||key.includes("VRAM")?sevRam:sevPct):(()=>"ok"));
+    const sev = key.includes("Temp")?sevTemp:(isPct?(key.includes("BAT")?sevBat:(key.includes("MEM")||key.includes("VRAM")?sevRam:sevPct)):(()=>"ok"));
     const div=document.createElement("div");
     div.className="stat";
     div.innerHTML=`${label} max <span class="v ${sevCls(sev(s.max))}">${fmt(s.max)}</span>  avg <span class="v ${sevCls(sev(s.avg))}">${fmt(s.avg)}</span>`;
@@ -435,8 +427,9 @@ function tipContent(panel,b){
     pills.push(s==null?pill("Temp unavailable","neutral"):pill(fmtTemp(s), sevTemp(s)));
   } else if(panel.sev==="temp"){
     pills.push(pill(fmtTemp(p), sevTemp(p)));
-  } else if(panel.sev==="ram"||panel.sev==="pct"){
-    pills.push(pill(fmtPct(p), panel.sev==="ram"?sevRam(p):sevPct(p)));
+  } else if(panel.sev==="ram"||panel.sev==="pct"||panel.sev==="bat"){
+    const fn = panel.sev==="ram"?sevRam:(panel.sev==="bat"?sevBat:sevPct);
+    pills.push(pill(fmtPct(p), fn(p)));
   } else {
     pills.push(pill(fmtValue(p, panel.fmt||"auto"), "neutral"));
   }

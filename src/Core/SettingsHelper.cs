@@ -71,6 +71,22 @@ namespace LiteMonitor
                 s.TaskbarPresetStyle = (Math.Abs(s.TaskbarFontSize - Settings.DEFAULT_TB_SIZE_REGULAR) < 0.1f) ? 0 : 1;
             }
 
+            // [Migration] 本版本启动默认：隐藏看板、关闭任务栏看板、不自动打开网页
+            // 旧 settings.json / 运行中进程回写会把这些值盖成 true，靠一次性迁移纠正
+            if (!s.StartupDefaultsApplied)
+            {
+                s.OpenWebOnStartup = false;
+                s.ShowTaskbar = false;
+                s.HideMainForm = true;
+                s.StartupDefaultsApplied = true;
+                try { s.Save(); } catch { }
+            }
+            else
+            {
+                // OpenWebOnStartup 已无 UI，始终关掉，防止旧配置继续弹浏览器
+                s.OpenWebOnStartup = false;
+            }
+
             s.InternAllStrings();
             
             return s;

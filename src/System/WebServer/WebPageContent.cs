@@ -89,7 +89,7 @@ namespace LiteMonitor.src.WebServer
             public string? B { get; init; }
             public string? ALabel { get; init; }
             public string? BLabel { get; init; }
-            public string Sev { get; init; } = "pct"; // pct | ram | temp | none
+            public string Sev { get; init; } = "pct"; // pct | ram | bat | temp | none | pctTemp
             public string Fmt { get; init; } = "auto";
             public string Rule { get; init; } = "";
         }
@@ -130,8 +130,8 @@ namespace LiteMonitor.src.WebServer
                 Rule = "average RPM per bucket" },
             new() { Id = "cpuPump", Title = "CPU Pump", Kind = "value", Primary = "CPU.Pump", Sev = "none", Fmt = "RPM",
                 Rule = "average RPM per bucket" },
-            new() { Id = "bat", Title = "Battery", Kind = "health", Primary = "BAT.Percent", Sev = "ram",
-                Rule = "charge level" },
+            new() { Id = "bat", Title = "Battery", Kind = "health", Primary = "BAT.Percent", Sev = "bat",
+                Rule = "≥60% · 20–60% · ≤20% · bar = charge remaining (low = worse)" },
             new() { Id = "batPower", Title = "Battery Power", Kind = "value", Primary = "BAT.Power", Sev = "none", Fmt = "W",
                 Rule = "average battery power" },
         };

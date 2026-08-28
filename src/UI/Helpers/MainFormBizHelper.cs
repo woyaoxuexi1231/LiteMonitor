@@ -175,10 +175,7 @@ namespace LiteMonitor.src.UI.Helpers
             _tray.MouseDoubleClick += (_, e) => 
             {
                 if (e.Button == MouseButtons.Left) 
-                {
-                    if (_form.Visible) ((MainForm)_form).HideMainWindow();
-                    else ((MainForm)_form).ShowMainWindow();
-                }
+                    WebActions.OpenWebMonitor(_cfg);
             };
         }
 
