@@ -14,12 +14,16 @@ namespace LiteMonitor.src.WebServer
     public class WebSessionManager
     {
         private readonly ConcurrentDictionary<TcpClient, bool> _wsClients = new();
-        private readonly Action<Utf8JsonWriter> _dataProvider;
+        private readonly Action<Utf8JsonWriter> _liveDataProvider;
+        private readonly Action<Utf8JsonWriter> _fullDataProvider;
         private volatile bool _isRunning = false;
 
-        public WebSessionManager(Action<Utf8JsonWriter> dataProvider)
+        /// <param name="liveDataProvider">WebSocket 高频推送（不含硬件树，避免包过大）</param>
+        /// <param name="fullDataProvider">HTTP /api/snapshot（含完整硬件树）</param>
+        public WebSessionManager(Action<Utf8JsonWriter> liveDataProvider, Action<Utf8JsonWriter> fullDataProvider)
         {
-            _dataProvider = dataProvider;
+            _liveDataProvider = liveDataProvider;
+            _fullDataProvider = fullDataProvider;
         }
 
         public void Start()
@@ -137,7 +141,7 @@ namespace LiteMonitor.src.WebServer
 
                 using var ms = new MemoryStream();
                 using var writer = new Utf8JsonWriter(ms);
-                _dataProvider(writer);
+                _fullDataProvider(writer);
                 writer.Flush();
                 SendHttpResponse(stream, 200, "application/json", ms.GetBuffer(), (int)ms.Length);
             }
@@ -246,41 +250,32 @@ namespace LiteMonitor.src.WebServer
                     continue;
                 }
 
-                byte[] buffer = null;
+                byte[]? jsonBytes = null;
                 try
                 {
-
-                    buffer = ArrayPool<byte>.Shared.Rent(32 * 1024); 
-                    
-                    int payloadLen;
-                    using (var ms = new System.IO.MemoryStream(buffer))
+                    // 完整硬件树后快照常 >32KB；不可再用固定容量 MemoryStream，否则写出抛错、前端一直「等待连接」
+                    using (var ms = new MemoryStream(64 * 1024))
                     using (var writer = new Utf8JsonWriter(ms))
                     {
-                        _dataProvider(writer);
+                        _liveDataProvider(writer);
                         writer.Flush();
-                        payloadLen = (int)ms.Position;
+                        jsonBytes = ms.ToArray();
                     }
 
+                    int payloadLen = jsonBytes.Length;
                     int headerLen = 2;
                     if (payloadLen >= 65536) headerLen += 8;
                     else if (payloadLen >= 126) headerLen += 2;
                     int totalLen = headerLen + payloadLen;
 
-                    // Rent a target buffer for the frame
                     byte[] frameBuffer = ArrayPool<byte>.Shared.Rent(totalLen);
                     try
                     {
                         int payloadOffset = EncodeFrameHeader(payloadLen, frameBuffer);
-                        Buffer.BlockCopy(buffer, 0, frameBuffer, payloadOffset, payloadLen);
+                        Buffer.BlockCopy(jsonBytes, 0, frameBuffer, payloadOffset, payloadLen);
 
-                        // Now we can return the "JSON Scratchpad" buffer IMMEDIATELY!
-                        ArrayPool<byte>.Shared.Return(buffer);
-                        buffer = null; // Prevent double return in finally
-
-                        // Broadcast using frameBuffer
                         var tasks = new List<Task>();
-                        // Capture the buffer and length for the closure
-                        var bufToSend = frameBuffer; 
+                        var bufToSend = frameBuffer;
                         var lenToSend = totalLen;
 
                         foreach (var client in _wsClients.Keys)
@@ -290,15 +285,11 @@ namespace LiteMonitor.src.WebServer
                                 _wsClients.TryRemove(client, out _);
                                 continue;
                             }
-                            // We must NOT return frameBuffer until ALL sends are done.
-                            // But since we await Task.WhenAll, it's fine.
                             tasks.Add(SendFrameSafeAsync(client, bufToSend, lenToSend));
                         }
 
                         if (tasks.Count > 0)
-                        {
                             await Task.WhenAll(tasks);
-                        }
                     }
                     finally
                     {
@@ -308,10 +299,6 @@ namespace LiteMonitor.src.WebServer
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Broadcast Error: {ex.Message}");
-                }
-                finally
-                {
-                    if (buffer != null) ArrayPool<byte>.Shared.Return(buffer);
                 }
 
                 // 正常广播频率：每秒一次
