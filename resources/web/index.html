@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {{FAVICON}}
-  <title>LiteMonitor · Dashboard</title>
+  <title>LiteMonitor · 看板</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -71,53 +71,130 @@
     .cal-foot { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .cal-foot .hint { font-size: 11px; color: var(--muted); }
     .cal-foot .cal-jump { font: 500 12px var(--font); padding: 5px 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); border-radius: 8px; cursor: pointer; }
-    .sys-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-    .tag { font-size: 12px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; font-variant-numeric: tabular-nums; }
-    .tag b { color: var(--text); font-weight: 600; margin-right: 4px; }
-    .tag.clickable { cursor: pointer; }
-    .live { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
-    @media (max-width:720px){ .live{grid-template-columns:repeat(2,1fr);} }
-    .live-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px 20px; }
-    .live-card .label { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 8px; }
-    .live-card .value { font-size: 24px; font-weight: 600; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; transition: color .15s; }
-    .live-card .sub { font-size: 13px; margin-top: 6px; font-variant-numeric: tabular-nums; transition: color .15s; }
-    .sev-ok{color:var(--ok)!important;} .sev-warn{color:var(--warn)!important;} .sev-crit{color:var(--crit)!important;}
-    .live-card .sub.neutral,.neutral{color:var(--muted)!important;}
-    .live-card.net .value{font-size:20px;}
-    .capsules {
-      display: flex; flex-wrap: wrap; gap: 8px;
-      margin-bottom: 16px;
-      padding: 14px 16px;
+    /* ── Dashboard sections
+       Overview · System · Summary · Timelines
+    */
+    .dash-section { margin-bottom: 14px; }
+    .dash-section .sec-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 10px; margin-bottom: 8px; padding: 0 2px;
+    }
+    .dash-section .sec-head h2 {
+      font-size: 11px; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .dash-section .sec-body {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: var(--r-lg);
     }
+
+    /* 1. Overview — categorized severity capsules only */
+    .sec-overview .sec-body {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 0; background: transparent; border: none; border-radius: 0;
+    }
+    .sec-overview .capsules {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .cap-row {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      align-items: center; min-height: 32px;
+    }
+    .cap-row .cap-lab {
+      width: 52px; flex-shrink: 0;
+      font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .04em;
+      text-transform: uppercase;
+    }
     .cap {
       display: inline-flex; align-items: baseline; gap: 6px;
-      padding: 6px 12px;
+      padding: 6px 10px; min-height: 32px; min-width: 0; max-width: 100%;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 999px;
+      font-variant-numeric: tabular-nums; line-height: 1.2;
+    }
+    .cap.ghost { opacity: .4; }
+    .cap .cap-k { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; flex-shrink: 0; }
+    .cap .cap-v { font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sev-ok{color:var(--ok)!important;} .sev-warn{color:var(--warn)!important;} .sev-crit{color:var(--crit)!important;}
+    .neutral{color:var(--muted)!important;}
+
+    /* 2. System — 2 fixed rows */
+    .sec-system .sec-body {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 12px;
+    }
+    .sys-row {
+      display: grid; gap: 8px; align-items: stretch;
+      min-height: 32px;
+    }
+    .sys-row.tags { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .tag {
+      font-size: 12px; color: var(--muted); background: #fff; border: 1px solid var(--border);
+      border-radius: 10px; padding: 6px 10px; font-variant-numeric: tabular-nums;
+      min-height: 32px; display: inline-flex; align-items: center; min-width: 0;
+    }
+    .tag b { color: var(--text); font-weight: 600; margin-right: 4px; }
+    .tag.clickable { cursor: pointer; }
+    .tag.ghost { opacity: .45; }
+    .sec-system .cap { background: #fff; }
+
+    /* Hardware inventory */
+    .sec-hardware .sec-body {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 12px;
+    }
+    .hw-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 10px;
+      align-items: center;
+      min-height: 32px;
       background: #fff;
       border: 1px solid var(--border);
-      border-radius: 999px;
-      font-variant-numeric: tabular-nums;
-      line-height: 1.2;
-      max-width: 100%;
+      border-radius: 10px;
+      padding: 8px 12px;
     }
-    .cap .cap-k {
-      font-size: 11px; font-weight: 500; color: var(--muted);
-      letter-spacing: 0.02em; flex-shrink: 0;
+    .hw-t {
+      font-size: 12px; color: var(--muted); font-weight: 600;
     }
-    .cap .cap-v {
-      font-size: 12.5px; font-weight: 600; color: var(--text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .hw-n {
+      font-size: 13px; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      min-width: 0;
     }
-    .stats-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .stats { display: flex; gap: 8px; flex-wrap: wrap; }
-    .stat { font-size: 11.5px; color: var(--muted); padding: 8px 12px; font-variant-numeric: tabular-nums; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-md); }
+    .hw-empty {
+      font-size: 13px; color: var(--muted); padding: 8px 4px;
+    }
+
+    /* 3. Summary — always 10 slots = 2×5 */
+    .sec-summary .sec-body {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      grid-template-rows: repeat(2, auto);
+      gap: 8px;
+      padding: 12px;
+    }
+    @media (max-width:720px){
+      .sec-summary .sec-body { grid-template-columns: repeat(2, minmax(0,1fr)); grid-template-rows: none; }
+    }
+    .stat {
+      font-size: 11.5px; color: var(--muted); padding: 8px 10px; font-variant-numeric: tabular-nums;
+      background: #fff; border: 1px solid var(--border); border-radius: var(--r-md);
+      min-height: 36px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-width: 0;
+    }
     .stat .v { font-weight: 600; color: var(--text); }
-    .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; padding: 0 2px; }
+    .stat.ghost { opacity: .45; }
+    .stat .lbl { font-weight: 500; color: var(--text); margin-right: 2px; }
+
+    /* 4. Timelines — history bars per metric */
+    .sec-timelines .sec-body {
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 0; background: transparent; border: none; border-radius: 0;
+    }
+    .legend-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 2px; }
     .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
     .legend-item .swatch { width: 8px; height: 8px; border-radius: 999px; }
-    .timelines { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .timelines { display: flex; flex-direction: column; gap: 10px; }
     .metric-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px 20px 14px; position: relative; }
     .metric-panel.hidden { display: none; }
     .metric-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 12px; }
@@ -166,69 +243,89 @@
   <header class="header">
     <div class="brand">
       <div class="dot off" id="brandDot"></div>
-      <h1>Dashboard</h1>
+      <h1>看板</h1>
       <span>LiteMonitor</span>
       <span class="ver">v2</span>
     </div>
     <div class="actions">
-      <button type="button" class="btn" id="btnRefresh"><span class="ico">↻</span> Refresh</button>
-      <button type="button" class="btn" id="btnOpenData">Open Folder</button>
-      <button type="button" class="btn danger" id="btnClearData">Clear Data</button>
+      <button type="button" class="btn" id="btnRefresh"><span class="ico">↻</span> 刷新</button>
+      <button type="button" class="btn" id="btnOpenData">打开目录</button>
+      <button type="button" class="btn danger" id="btnClearData">清空数据</button>
     </div>
   </header>
 
   <div class="timebar">
     <div class="range" id="rangeSelector">
-      <button type="button" data-mode="live" class="on">30m</button>
-      <button type="button" data-mode="day">Day</button>
+      <button type="button" data-mode="live" class="on">30分钟</button>
+      <button type="button" data-mode="day">按天</button>
     </div>
     <div class="day-nav-wrap" id="dayNavWrap">
       <div class="day-nav">
         <button type="button" class="nav-btn" id="btnPrevDay">‹</button>
-        <button type="button" class="day-btn" id="btnDayLabel" aria-haspopup="dialog" aria-expanded="false"><span id="dayLabelText">Today</span></button>
+        <button type="button" class="day-btn" id="btnDayLabel" aria-haspopup="dialog" aria-expanded="false"><span id="dayLabelText">今天</span></button>
         <button type="button" class="nav-btn" id="btnNextDay">›</button>
       </div>
-      <button type="button" class="btn-today" id="btnToday">Today</button>
+      <button type="button" class="btn-today" id="btnToday">今天</button>
       <div class="cal" id="calPopover" role="dialog">
         <div class="cal-head">
           <button type="button" class="cal-nav" id="calPrev">‹</button>
           <span class="cal-title" id="calTitle">—</span>
           <button type="button" class="cal-nav" id="calNext">›</button>
         </div>
-        <div class="cal-dows" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div class="cal-dows" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
         <div class="cal-grid" id="calGrid"></div>
         <div class="cal-foot">
-          <span class="hint" id="calHint">Last 7 days</span>
-          <button type="button" class="cal-jump" id="calJumpToday">Jump to today</button>
+          <span class="hint" id="calHint">最近 7 天</span>
+          <button type="button" class="cal-jump" id="calJumpToday">跳到今天</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="sys-tags">
-    <div class="tag"><b>IP</b><span id="sysIp">—</span></div>
-    <div class="tag"><b>APP</b><span id="sysUptime">—</span></div>
-    <div class="tag clickable" id="authTag" style="display:none" onclick="showAuth()"><b>AUTH</b>🔒</div>
-    <div class="tag"><b>STATUS</b><span id="statusText">—</span></div>
-  </div>
-
-  <section class="live">
-    <div class="live-card"><div class="label">CPU</div><div class="value" id="liveCpu">—</div><div class="sub neutral" id="liveCpuT">—</div></div>
-    <div class="live-card"><div class="label">GPU</div><div class="value" id="liveGpu">—</div><div class="sub neutral" id="liveGpuT">—</div></div>
-    <div class="live-card"><div class="label">RAM</div><div class="value" id="liveRam">—</div><div class="sub neutral" id="liveRamSub">—</div></div>
-    <div class="live-card net"><div class="label">NET</div><div class="value" id="liveDn">—</div><div class="sub neutral" id="liveUp">—</div></div>
+  <section class="dash-section sec-overview" data-section="overview" aria-labelledby="sec-overview">
+    <div class="sec-head"><h2 id="sec-overview">总览</h2></div>
+    <div class="sec-body">
+      <div class="capsules" id="groups"></div>
+    </div>
   </section>
 
-  <section class="capsules" id="groups"></section>
-  <div class="stats-block"><div class="stats" id="statsRow"></div></div>
-  <div class="legend-row">
-    <span class="legend-item"><span class="swatch" style="background:var(--ok)"></span>Healthy</span>
-    <span class="legend-item"><span class="swatch" style="background:var(--warn)"></span>Degraded</span>
-    <span class="legend-item"><span class="swatch" style="background:var(--crit)"></span>Critical</span>
-    <span class="legend-item"><span class="swatch" style="background:var(--empty)"></span>No data</span>
-    <span class="legend-item" style="margin-left:auto">color = severity · volume height = traffic</span>
-  </div>
-  <section class="timelines" id="timelines"></section>
+  <section class="dash-section sec-system" data-section="system" aria-labelledby="sec-system">
+    <div class="sec-head"><h2 id="sec-system">系统</h2></div>
+    <div class="sec-body" id="sysBody">
+      <div class="sys-row tags" id="sysTags">
+        <div class="tag"><b>IP</b><span id="sysIp">—</span></div>
+        <div class="tag"><b>运行</b><span id="sysUptime">—</span></div>
+        <div class="tag"><b>状态</b><span id="statusText">—</span></div>
+        <div class="tag clickable ghost" id="authTag" onclick="showAuth()"><b>认证</b><span id="authLabel">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dash-section sec-hardware" data-section="hardware" aria-labelledby="sec-hardware">
+    <div class="sec-head"><h2 id="sec-hardware">硬件</h2></div>
+    <div class="sec-body" id="hwBody">
+      <div class="hw-empty">等待连接…</div>
+    </div>
+  </section>
+
+  <section class="dash-section sec-summary" data-section="summary" aria-labelledby="sec-summary">
+    <div class="sec-head"><h2 id="sec-summary">汇总</h2></div>
+    <div class="sec-body" id="statsRow"></div>
+  </section>
+
+  <section class="dash-section sec-timelines" data-section="timelines" aria-labelledby="sec-timelines">
+    <div class="sec-head"><h2 id="sec-timelines">时间线</h2></div>
+    <div class="sec-body">
+      <div class="legend-row">
+        <span class="legend-item"><span class="swatch" style="background:var(--ok)"></span>健康</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--warn)"></span>偏高</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--crit)"></span>严重</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--empty)"></span>无数据</span>
+        <span class="legend-item" style="margin-left:auto">颜色 = 严重程度 · 高度 = 流量</span>
+      </div>
+      <div class="timelines" id="timelines"></div>
+    </div>
+  </section>
   <footer class="foot"><span id="footInfo">—</span><span id="clock">—</span></footer>
 </div>
 
@@ -244,47 +341,69 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const AUTH_REQUIRED = {{AUTH_REQUIRED}};
-const HERO = new Set(["CPU.Load","CPU.Temp","GPU.Load","GPU.Temp","MEM.Load","NET.Up","NET.Down"]);
 const ALWAYS_PANELS = new Set(["cpu","gpu","ram","net"]);
 const CAP_LABELS = {
-  "DASH.HOST": "Host",
-  "DASH.Time": "Time",
-  "DASH.Uptime": "Up",
-  "DASH.IP": "LAN",
-  "CPU.Clock": "CPU clk",
-  "CPU.Power": "CPU W",
-  "CPU.Voltage": "CPU V",
-  "CPU.Fan": "CPU fan",
-  "CPU.Pump": "Pump",
-  "GPU.Clock": "GPU clk",
-  "GPU.Power": "GPU W",
-  "GPU.Fan": "GPU fan",
-  "GPU.VRAM": "VRAM",
-  "FPS": "FPS",
-  "MOBO.Temp": "MOBO",
-  "DISK.Temp": "Disk °C",
-  "CASE.Fan": "Case fan",
-  "BAT.Percent": "Battery",
-  "BAT.Power": "Bat W",
-  "BAT.Voltage": "Bat V",
-  "BAT.Current": "Bat A",
-  "DISK.Read": "Read",
-  "DISK.Write": "Write",
-  "DATA.DayUp": "Today ↑",
-  "DATA.DayDown": "Today ↓",
+  "DASH.HOST": "主机名",
+  "DASH.Time": "时间",
+  "DASH.Uptime": "已开机",
+  "DASH.IP": "内网IP",
+  "CPU.Load": "使用率",
+  "CPU.Temp": "温度",
+  "CPU.Clock": "频率",
+  "CPU.Power": "功耗",
+  "CPU.Voltage": "电压",
+  "CPU.Fan": "风扇",
+  "CPU.Pump": "水泵",
+  "GPU.Load": "使用率",
+  "GPU.Temp": "温度",
+  "GPU.Clock": "频率",
+  "GPU.Power": "功耗",
+  "GPU.Fan": "风扇",
+  "GPU.VRAM": "显存",
+  "MEM.Load": "占用",
+  "FPS": "帧率",
+  "MOBO.Temp": "主板温度",
+  "DISK.Temp": "磁盘温度",
+  "CASE.Fan": "机箱风扇",
+  "BAT.Percent": "电量",
+  "BAT.Power": "功率",
+  "BAT.Voltage": "电压",
+  "BAT.Current": "电流",
+  "DISK.Read": "读取",
+  "DISK.Write": "写入",
+  "NET.Down": "下载",
+  "NET.Up": "上传",
+  "DATA.DayUp": "今日↑",
+  "DATA.DayDown": "今日↓",
 };
-const CAP_ORDER = [
-  "DASH.HOST","DASH.Uptime","DASH.IP","DASH.Time",
-  "CPU.Clock","CPU.Power","CPU.Voltage","CPU.Fan","CPU.Pump",
-  "GPU.Clock","GPU.Power","GPU.Fan","GPU.VRAM",
-  "FPS","MOBO.Temp","DISK.Temp","CASE.Fan",
-  "BAT.Percent","BAT.Power","BAT.Voltage","BAT.Current",
-  "DISK.Read","DISK.Write","DATA.DayUp","DATA.DayDown"
+/* 与「监控项显示」菜单对齐的完整清单；无数据/未开启一律占位 "—" */
+const CAPSULE_ROWS = [
+  { id:"dash",  lab:"看板", keys:["DASH.HOST","DASH.Time","DASH.Uptime","DASH.IP"] },
+  { id:"cpu",   lab:"CPU",  keys:["CPU.Load","CPU.Temp","CPU.Clock","CPU.Power","CPU.Voltage","CPU.Fan","CPU.Pump"] },
+  { id:"gpu",   lab:"GPU",  keys:["GPU.Load","GPU.Temp","GPU.Clock","GPU.Power","GPU.Fan","GPU.VRAM"] },
+  { id:"host",  lab:"主机", keys:["MEM.Load","FPS","MOBO.Temp","DISK.Temp","CASE.Fan"] },
+  { id:"batt",  lab:"电池", keys:["BAT.Percent","BAT.Power","BAT.Voltage","BAT.Current"] },
+  { id:"disk",  lab:"磁盘", keys:["DISK.Read","DISK.Write"] },
+  { id:"net",   lab:"网络", keys:["NET.Down","NET.Up"] },
+  { id:"data",  lab:"流量", keys:["DATA.DayUp","DATA.DayDown"] },
 ];
-const ST = { ok:{label:"Healthy"}, warn:{label:"Degraded"}, crit:{label:"Critical"}, empty:{label:"No data"} };
+const CAPSULE_KEY_SET = new Set(CAPSULE_ROWS.flatMap(r => r.keys));
+const SUMMARY_SLOTS = [
+  { key:"CPU.Load",  label:"CPU",  kind:"pct" },
+  { key:"CPU.Temp",  label:"CPU°", kind:"temp" },
+  { key:"GPU.Load",  label:"GPU",  kind:"pct" },
+  { key:"GPU.Temp",  label:"GPU°", kind:"temp" },
+  { key:"MEM.Load",  label:"内存", kind:"ram" },
+  { key:"GPU.VRAM",  label:"显存", kind:"ram" },
+  { key:"FPS",       label:"帧率", kind:"fps" },
+  { key:"CPU.Power", label:"CPU功耗",kind:"power" },
+  { key:"GPU.Power", label:"GPU功耗",kind:"power" },
+  { key:"NET",       label:"网络",  kind:"net" },
+];
+const ST = { ok:{label:"健康"}, warn:{label:"偏高"}, crit:{label:"严重"}, empty:{label:"无数据"} };
 const LEVEL = { ok:0, warn:1, crit:2 };
-const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DOW = ["周日","周一","周二","周三","周四","周五","周六"];
+const MON = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
 
 let HISTORY_DAYS = 7;
 let pwd = localStorage.getItem("ws_pwd") || "";
@@ -294,7 +413,6 @@ let currentBuckets = [];
 let currentPanels = [];
 let currentFlags = {};
 let liveItems = [];
-let ramTotalGB = 0;
 let busy = false;
 let ws = null;
 let reconnectTimer = null;
@@ -302,8 +420,13 @@ let calMonth = null;
 let calOpen = false;
 
 if (AUTH_REQUIRED) {
-  $("authTag").style.display = "inline-flex";
+  $("authTag").classList.remove("ghost");
+  $("authLabel").textContent = "🔒";
   if (!pwd) showAuth();
+} else {
+  $("authTag").classList.add("ghost");
+  $("authLabel").textContent = "关";
+  $("authTag").onclick = null;
 }
 
 function withPwd(url) {
@@ -347,12 +470,6 @@ function itemRaw(item){ if(!item)return null; if(typeof item.raw==="number"&&!is
 function bucketVal(b,key){ if(!b||b.empty||!b.v)return null; const v=b.v[key]; return (v==null||v<0)?null:+v; }
 function bucketBytes(b,key){ if(!b||b.empty||!b.bytes)return 0; return +(b.bytes[key]||0); }
 
-function setLive(el,text,sev){
-  el.textContent=text;
-  el.className=el.className.split(" ").filter(c=>!c.startsWith("sev-")&&c!=="neutral").join(" ");
-  if(sev==="neutral")el.classList.add("neutral"); else if(sev)el.classList.add("sev-"+sev);
-}
-
 function toDayKey(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
 function parseDayKey(key){ const [y,m,d]=key.split("-").map(Number); return new Date(y,m-1,d); }
 function startOfDay(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
@@ -361,10 +478,10 @@ function todayKey(){ return toDayKey(startOfDay(new Date())); }
 function minDayKey(){ const d=startOfDay(new Date()); d.setDate(d.getDate()-HISTORY_DAYS); return toDayKey(d); }
 function formatDayTitle(key){
   const d=parseDayKey(key), today=startOfDay(new Date());
-  if(isSameDay(d,today))return"Today";
+  if(isSameDay(d,today))return"今天";
   const yest=new Date(today); yest.setDate(today.getDate()-1);
-  if(isSameDay(d,yest))return"Yesterday";
-  return DOW[d.getDay()]+" · "+MON[d.getMonth()]+" "+d.getDate();
+  if(isSameDay(d,yest))return"昨天";
+  return DOW[d.getDay()]+" · "+MON[d.getMonth()]+d.getDate()+"日";
 }
 
 function syncDayNav(){
@@ -377,7 +494,7 @@ function syncDayNav(){
   $("btnPrevDay").disabled=selectedDay<=minDayKey();
   $("btnNextDay").disabled=selectedDay>=today;
   $("btnToday").disabled=selectedDay===today;
-  $("calHint").textContent="Last "+HISTORY_DAYS+" days";
+  $("calHint").textContent="最近 "+HISTORY_DAYS+" 天";
 }
 
 function setMode(mode, dayKey){
@@ -402,7 +519,7 @@ function renderCal(){
   if(!calMonth) return;
   const {min,max}=monthBounds();
   const y=calMonth.getFullYear(), m=calMonth.getMonth();
-  $("calTitle").textContent=MON[m]+" "+y;
+  $("calTitle").textContent=y+"年"+MON[m];
   const first=new Date(y,m,1), startPad=first.getDay(), daysInMonth=new Date(y,m+1,0).getDate(), prevDays=new Date(y,m,0).getDate();
   const grid=$("calGrid"); grid.innerHTML="";
   const cells=[];
@@ -449,7 +566,7 @@ async function savePwd(){
 }
 $("pwd-input").addEventListener("keyup", e=>{ if(e.key==="Enter") savePwd(); });
 
-function setOnline(on){ $("brandDot").classList.toggle("off", !on); $("statusText").textContent=on?"LIVE":"OFFLINE"; }
+function setOnline(on){ $("brandDot").classList.toggle("off", !on); $("statusText").textContent=on?"在线":"离线"; }
 
 function connect(){
   if(ws) return;
@@ -476,66 +593,90 @@ function renderLive(data){
   if(data.sys){
     $("sysIp").textContent=(data.sys.ip||"—")+(data.sys.port?(":"+data.sys.port):"");
     $("sysUptime").textContent=data.sys.uptime||"—";
-    if(typeof data.sys.ramTotalGB==="number") ramTotalGB=data.sys.ramTotalGB;
   }
-  const cpu=findItem(items,"CPU.Load"), cpuT=findItem(items,"CPU.Temp");
-  const gpu=findItem(items,"GPU.Load"), gpuT=findItem(items,"GPU.Temp");
-  const ram=findItem(items,"MEM.Load"), dn=findItem(items,"NET.Down"), up=findItem(items,"NET.Up");
-  const cpuPct=cpu?(cpu.pct??itemRaw(cpu)):null;
-  const gpuPct=gpu?(gpu.pct??itemRaw(gpu)):null;
-  const ramPct=ram?(ram.pct??itemRaw(ram)):null;
-  const cpuTemp=itemRaw(cpuT), gpuTemp=itemRaw(gpuT);
-  setLive($("liveCpu"), cpuPct==null?"—":Math.round(cpuPct)+"%", sevPct(cpuPct));
-  setLive($("liveCpuT"), fmtTemp(cpuTemp), cpuTemp==null?"neutral":sevTemp(cpuTemp));
-  setLive($("liveGpu"), gpuPct==null?"—":Math.round(gpuPct)+"%", sevPct(gpuPct));
-  setLive($("liveGpuT"), fmtTemp(gpuTemp), gpuTemp==null?"neutral":sevTemp(gpuTemp));
-  setLive($("liveRam"), ramPct==null?"—":Math.round(ramPct)+"%", sevRam(ramPct));
-  let ramSub="—";
-  if(ram){
-    if(ram.u&&ram.u!=="%"&&ram.v) ramSub=ram.v+" "+ram.u;
-    else if(ramTotalGB>0&&ramPct!=null) ramSub=((ramPct/100)*ramTotalGB).toFixed(1)+" / "+ramTotalGB.toFixed(0)+" GB";
-    else ramSub=itemText(ram);
-  }
-  setLive($("liveRamSub"), ramSub, ramPct==null?"neutral":sevRam(ramPct));
-  setLive($("liveDn"), itemText(dn), dn?stsToSev(dn.sts):"neutral");
-  setLive($("liveUp"), (dn||up)?("↑ "+itemText(up)):"—", "neutral");
   renderGroups(items);
+  renderHardware(data.hw);
   updatePanelInlines();
 }
 
-function capLabel(it){
-  if (CAP_LABELS[it.k]) return CAP_LABELS[it.k];
-  // Plugins / unknown: strip emoji & CJK group noise, keep short English-ish key tail
-  const tail = (it.k || "").split(".").pop() || it.k || "Item";
-  return tail;
+function renderHardware(list){
+  const root = $("hwBody");
+  if (!root) return;
+  if (!Array.isArray(list) || list.length === 0) {
+    root.innerHTML = `<div class="hw-empty">暂无硬件信息</div>`;
+    return;
+  }
+  // 稳定排序：主板 → CPU → 内存 → 显卡 → 硬盘 → 网卡 → 其他
+  const order = { Motherboard:0, Cpu:1, Memory:2, GpuNvidia:3, GpuAmd:3, GpuIntel:3, Storage:4, Network:5, SuperIO:6, Cooler:7 };
+  const sorted = list.slice().sort((a,b) => (order[a.k] ?? 50) - (order[b.k] ?? 50) || String(a.t||"").localeCompare(String(b.t||"")));
+  root.innerHTML = "";
+  sorted.forEach(h => {
+    const row = document.createElement("div");
+    row.className = "hw-row";
+    row.title = (h.t || "") + " · " + (h.n || "");
+    row.innerHTML =
+      `<span class="hw-t">${h.t || "设备"}</span>` +
+      `<span class="hw-n">${h.n || "—"}</span>`;
+    root.appendChild(row);
+  });
+}
+
+function makeCap(key, item){
+  const el = document.createElement("span");
+  const label = CAP_LABELS[key] || (key.split(".").pop() || key);
+  const empty = !item || item.sts === -1 || item.v == null || item.v === "" || item.v === "—" || item.v === "--";
+  if (empty) {
+    el.className = "cap ghost";
+    el.title = (item && item.n) ? item.n : key;
+    el.innerHTML = `<span class="cap-k">${label}</span><span class="cap-v">—</span>`;
+    return el;
+  }
+  const sev = stsToSev(item.sts);
+  let text = itemText(item);
+  if (key.endsWith(".Load") || key === "MEM.Load" || key === "GPU.VRAM" || key === "BAT.Percent") {
+    const p = item.pct ?? itemRaw(item);
+    if (typeof p === "number" && !isNaN(p) && p >= 0) text = Math.round(p) + "%";
+  } else if (key.endsWith(".Temp")) {
+    text = fmtTemp(itemRaw(item));
+  }
+  el.className = "cap";
+  el.title = (item.n || item.k) + " · " + itemText(item);
+  el.innerHTML =
+    `<span class="cap-k">${label}</span>` +
+    `<span class="cap-v ${sev === "neutral" ? "" : ("sev-" + sev)}">${text}</span>`;
+  return el;
 }
 
 function renderGroups(items){
   const root = $("groups");
-  const list = items.filter(it => !HERO.has(it.k));
-  list.sort((a, b) => {
-    const ia = CAP_ORDER.indexOf(a.k);
-    const ib = CAP_ORDER.indexOf(b.k);
-    const sa = ia < 0 ? 1000 + (a.gidx ?? 999) : ia;
-    const sb = ib < 0 ? 1000 + (b.gidx ?? 999) : ib;
-    return sa - sb;
-  });
   root.innerHTML = "";
-  if (!list.length) {
-    root.style.display = "none";
-    return;
-  }
-  root.style.display = "flex";
-  list.forEach(it => {
-    const sev = stsToSev(it.sts);
-    const el = document.createElement("span");
-    el.className = "cap";
-    el.title = (it.n || it.k) + " · " + itemText(it);
-    el.innerHTML =
-      `<span class="cap-k">${capLabel(it)}</span>` +
-      `<span class="cap-v ${sev === "neutral" ? "" : ("sev-" + sev)}">${itemText(it)}</span>`;
-    root.appendChild(el);
+  const used = new Set();
+  CAPSULE_ROWS.forEach(row => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "cap-row";
+    rowEl.dataset.row = row.id;
+    const lab = document.createElement("div");
+    lab.className = "cap-lab";
+    lab.textContent = row.lab;
+    rowEl.appendChild(lab);
+    row.keys.forEach(key => {
+      used.add(key);
+      rowEl.appendChild(makeCap(key, findItem(items, key)));
+    });
+    root.appendChild(rowEl);
   });
+  /* 插件等未收录项 → 其他 */
+  const extras = (items || []).filter(it => it && it.k && !used.has(it.k) && !CAPSULE_KEY_SET.has(it.k));
+  if (!extras.length) return;
+  const rowEl = document.createElement("div");
+  rowEl.className = "cap-row";
+  rowEl.dataset.row = "extra";
+  const lab = document.createElement("div");
+  lab.className = "cap-lab";
+  lab.textContent = "其他";
+  rowEl.appendChild(lab);
+  extras.forEach(it => rowEl.appendChild(makeCap(it.k, it)));
+  root.appendChild(rowEl);
 }
 
 function levelFor(panel, b){
@@ -588,19 +729,24 @@ function ensurePanels(panels){
 
 function liveInlineFor(panel){
   if(panel.kind==="volume"){
-    return viewMode==="live"?"last 30 min":"day total";
+    return viewMode==="live"?"近 30 分钟":"当日合计";
   }
-  if(panel.id==="cpu"){
-    const a=$("liveCpu").textContent, b=$("liveCpuT").textContent;
-    return `<span class="${$("liveCpu").className}">${a}</span><span class="sep">·</span><span class="${$("liveCpuT").className}">${b}</span>`;
+  function spanFor(key, kind){
+    const it=findItem(liveItems, key);
+    if(!it) return `<span class="neutral">—</span>`;
+    const sev=stsToSev(it.sts);
+    let text=itemText(it);
+    if(kind==="pct"){
+      const p=it.pct??itemRaw(it);
+      text=p==null?"—":Math.round(p)+"%";
+    } else if(kind==="temp"){
+      text=fmtTemp(itemRaw(it));
+    }
+    return `<span class="${sev==="neutral"?"":("sev-"+sev)}">${text}</span>`;
   }
-  if(panel.id==="gpu"){
-    const a=$("liveGpu").textContent, b=$("liveGpuT").textContent;
-    return `<span class="${$("liveGpu").className}">${a}</span><span class="sep">·</span><span class="${$("liveGpuT").className}">${b}</span>`;
-  }
-  if(panel.id==="ram"){
-    return `<span class="${$("liveRam").className}">${$("liveRam").textContent}</span><span class="sep">·</span><span class="${$("liveRamSub").className}">${$("liveRamSub").textContent}</span>`;
-  }
+  if(panel.id==="cpu") return spanFor("CPU.Load","pct")+`<span class="sep">·</span>`+spanFor("CPU.Temp","temp");
+  if(panel.id==="gpu") return spanFor("GPU.Load","pct")+`<span class="sep">·</span>`+spanFor("GPU.Temp","temp");
+  if(panel.id==="ram") return spanFor("MEM.Load","pct");
   const it=findItem(liveItems, panel.primary);
   if(!it) return "—";
   const sev=stsToSev(it.sts);
@@ -660,57 +806,66 @@ function renderTimelines(data){
   updatePanelInlines();
   renderStats(data.stats||{});
   $("footInfo").textContent =
-    (data.bucketCount||0)+" buckets · "+(data.pointCount||0)+" samples · "+
-    (viewMode==="live"?"live 30m":(selectedDay+" 24h"))+" · "+
-    currentPanels.filter(p=>panelHasData(p,currentFlags)).length+" timelines";
+    (data.bucketCount||0)+" 段 · "+(data.pointCount||0)+" 采样 · "+
+    (viewMode==="live"?"近 30 分钟":(selectedDay+" 全天"))+" · "+
+    currentPanels.filter(p=>panelHasData(p,currentFlags)).length+" 条时间线";
 }
 
 function renderStats(stats){
   const row=$("statsRow"); row.innerHTML="";
-  const keys=[
-    ["CPU.Load","CPU",true],["CPU.Temp","CPU°",false],
-    ["GPU.Load","GPU",true],["GPU.Temp","GPU°",false],
-    ["MEM.Load","RAM",true],["GPU.VRAM","VRAM",true],
-    ["FPS","FPS",false],["CPU.Power","CPU W",false],["GPU.Power","GPU W",false]
-  ];
-  keys.forEach(([key,label,isPct])=>{
-    const s=stats[key]; if(!s||(s.max==null&&s.avg==null)) return;
-    if((s.max??-1)<0 && (s.avg??-1)<0) return;
-    const fmt = key.includes("Temp")?fmtTemp : (isPct?fmtPct:(v=>fmtValue(v, key.includes("Power")?"W":(key==="FPS"?"FPS":"auto"))));
-    const sev = key.includes("Temp")?sevTemp:(isPct?(key.includes("BAT")?sevBat:(key.includes("MEM")||key.includes("VRAM")?sevRam:sevPct)):(()=>"ok"));
-    const div=document.createElement("div");
-    div.className="stat";
-    div.innerHTML=`${label} max <span class="v ${sevCls(sev(s.max))}">${fmt(s.max)}</span>  avg <span class="v ${sevCls(sev(s.avg))}">${fmt(s.avg)}</span>`;
-    row.appendChild(div);
-  });
   let dn=0, up=0;
   currentBuckets.forEach(b=>{ if(!b.empty){ dn+=bucketBytes(b,"NET.Down"); up+=bucketBytes(b,"NET.Up"); } });
-  if(dn>0||up>0){
+  SUMMARY_SLOTS.forEach(slot=>{
     const div=document.createElement("div");
     div.className="stat";
-    div.innerHTML=`NET ↓ <span class="v">${fmtBytes(dn)}</span>  ↑ <span class="v">${fmtBytes(up)}</span>  Σ <span class="v">${fmtBytes(dn+up)}</span>`;
+    if(slot.kind==="net"){
+      if(dn<=0&&up<=0){
+        div.classList.add("ghost");
+        div.innerHTML=`<span class="lbl">网络</span> —`;
+      } else {
+        div.innerHTML=`<span class="lbl">网络</span> ↓ <span class="v">${fmtBytes(dn)}</span>  ↑ <span class="v">${fmtBytes(up)}</span>`;
+      }
+      row.appendChild(div);
+      return;
+    }
+    const s=stats[slot.key];
+    const has=s&&((s.max??-1)>=0||(s.avg??-1)>=0);
+    if(!has){
+      div.classList.add("ghost");
+      div.innerHTML=`<span class="lbl">${slot.label}</span> —`;
+      row.appendChild(div);
+      return;
+    }
+    let fmt, sevFn;
+    if(slot.kind==="temp"){ fmt=fmtTemp; sevFn=sevTemp; }
+    else if(slot.kind==="ram"){ fmt=fmtPct; sevFn=sevRam; }
+    else if(slot.kind==="pct"){ fmt=fmtPct; sevFn=sevPct; }
+    else if(slot.kind==="power"){ fmt=v=>fmtValue(v,"W"); sevFn=()=>"ok"; }
+    else if(slot.kind==="fps"){ fmt=v=>fmtValue(v,"FPS"); sevFn=()=>"ok"; }
+    else { fmt=v=>fmtValue(v,"auto"); sevFn=()=>"ok"; }
+    div.innerHTML=`<span class="lbl">${slot.label}</span> 最高 <span class="v ${sevCls(sevFn(s.max))}">${fmt(s.max)}</span>  平均 <span class="v ${sevCls(sevFn(s.avg))}">${fmt(s.avg)}</span>`;
     row.appendChild(div);
-  }
+  });
 }
 
 function bucketTimeLabel(i,n){
   if(viewMode==="day") return pad2(i)+":00 – "+pad2(i===23?24:i+1)+":00";
   const mins=Math.round((1-i/n)*30);
-  return mins>0? mins+" min ago":"Now";
+  return mins>0? mins+" 分钟前":"现在";
 }
 
 function tipContent(panel,b){
-  if(!b||b.empty) return [pill("No samples","neutral")];
+  if(!b||b.empty) return [pill("无采样","neutral")];
   if(panel.kind==="volume"){
     const a=bucketBytes(b,panel.a), bb=bucketBytes(b,panel.b);
-    return [pill((panel.aLabel||"A")+" "+fmtBytes(a),"neutral"), pill((panel.bLabel||"B")+" "+fmtBytes(bb),"neutral"), pill("Σ "+fmtBytes(a+bb),"neutral")];
+    return [pill((panel.aLabel||"A")+" "+fmtBytes(a),"neutral"), pill((panel.bLabel||"B")+" "+fmtBytes(bb),"neutral"), pill("合计 "+fmtBytes(a+bb),"neutral")];
   }
   const pills=[];
   const p=bucketVal(b,panel.primary);
   const s=bucketVal(b,panel.secondary);
   if(panel.sev==="pctTemp"){
-    pills.push(pill(fmtPct(p)+" util", sevPct(p)));
-    pills.push(s==null?pill("Temp unavailable","neutral"):pill(fmtTemp(s), sevTemp(s)));
+    pills.push(pill(fmtPct(p)+" 占用", sevPct(p)));
+    pills.push(s==null?pill("温度不可用","neutral"):pill(fmtTemp(s), sevTemp(s)));
   } else if(panel.sev==="temp"){
     pills.push(pill(fmtTemp(p), sevTemp(p)));
   } else if(panel.sev==="ram"||panel.sev==="pct"||panel.sev==="bat"){
@@ -736,7 +891,7 @@ function bindPanelBars(el, panel){
     tip.querySelector('[data-role="time"]').textContent=bucketTimeLabel(i, currentBuckets.length);
     tip.querySelector('[data-role="dot"]').className="status-dot "+(b.empty?"empty":(isVol?"net":lv));
     const label=tip.querySelector('[data-role="label"]');
-    label.textContent=b.empty?"No data":(isVol?"Traffic":(ST[lv]?ST[lv].label:lv));
+    label.textContent=b.empty?"无数据":(isVol?"流量":(ST[lv]?ST[lv].label:lv));
     label.className="status-label "+(b.empty||isVol||lv==="empty"?"neutral":sevCls(lv));
     tip.querySelector('[data-role="vals"]').innerHTML=tipContent(panel,b).join("");
     tip.classList.add("show");
@@ -762,7 +917,7 @@ async function requestHisto(){
     const data=await res.json();
     renderTimelines(data);
     syncDayNav();
-  }catch(e){ console.error(e); $("footInfo").textContent="History unavailable"; }
+  }catch(e){ console.error(e); $("footInfo").textContent="历史数据不可用"; }
   finally{ busy=false; setRefreshBusy(false); }
 }
 
@@ -788,6 +943,8 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape"&&calOpen) closeCal
 
 function tick(){ $("clock").textContent=new Date().toLocaleTimeString("zh-CN",{hour12:false}); }
 setInterval(tick,1000); tick();
+renderGroups([]);
+renderStats({});
 connect(); requestHisto();
 setInterval(requestHisto, 60000);
 
