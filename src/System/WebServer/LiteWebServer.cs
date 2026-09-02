@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Text.Json; // [Fix] Added missing using
-using System.Buffers; // [Optimization] Use ArrayPool
+using System.Text.Json;
+using System.Buffers;
+using System.Linq;
+using LibreHardwareMonitor.Hardware;
 using LiteMonitor.src.Core;
 using LiteMonitor.src.SystemServices;
 using LiteMonitor.src.SystemServices.InfoService;
@@ -34,7 +36,9 @@ namespace LiteMonitor.src.WebServer
             _cfg = cfg;
             Instance = this;
             // Initialize WebSocket Manager with the data provider delegate
-            _sessionManager = new WebSessionManager(WriteSnapshotJson);
+            _sessionManager = new WebSessionManager(
+                writer => WriteSnapshotJson(writer, includeTree: false),
+                writer => WriteSnapshotJson(writer, includeTree: true));
         }
 
         public bool Start(out string errorMsg)
@@ -111,7 +115,7 @@ namespace LiteMonitor.src.WebServer
             }
         }
 
-        private void WriteSnapshotJson(Utf8JsonWriter writer)
+        private void WriteSnapshotJson(Utf8JsonWriter writer, bool includeTree = true)
         {
             var hw = HardwareMonitor.Instance;
             if (hw == null)
@@ -158,7 +162,11 @@ namespace LiteMonitor.src.WebServer
             writer.WriteNumber("vramTotalGB", Settings.DetectedGpuVramTotalGB);
             writer.WriteEndObject();
 
-            // "items" array
+            // 完整硬件树体积大，仅 HTTP snapshot 携带；WebSocket 高频推送跳过
+            if (includeTree)
+                WriteHardwareTree(writer, hw);
+
+            // "items" array（时间线实时值仍依赖监控项）
             writer.WriteStartArray("items");
 
             foreach (var item in itemsCopy)
@@ -210,29 +218,28 @@ namespace LiteMonitor.src.WebServer
                 }
                 else
                 {
-                    // FPS 会惰性启动 PresentMon；未开启时不要探测
-                    if (item.Key.Equals("FPS", StringComparison.OrdinalIgnoreCase) && !_cfg.IsAnyEnabled("FPS"))
-                        continue;
+                    // FPS 会惰性启动 PresentMon；未开启时仍占位推送，前端显示 "—"
+                    bool fpsOff = item.Key.Equals("FPS", StringComparison.OrdinalIgnoreCase) && !_cfg.IsAnyEnabled("FPS");
 
-                    // 硬件监控项
-                    float? val = hw.Get(item.Key);
+                    // 硬件监控项：无读数时仍推送占位，保证网页总览「一眼看全」
+                    float? val = fpsOff ? null : hw.Get(item.Key);
 
-                    // [Fix] 恢复过滤逻辑：跳过没有数据的监控项（如台式机的电池），以符合业务屏蔽需求
-                    // 布局顺序问题已由 CSS order (gidx) 机制解决，即使数据晚到也会插入正确位置
-                    if (!val.HasValue) continue;
+                    if (val.HasValue)
+                    {
+                        rawValue = val;
+                        valStr = MetricUtils.GetValueStr(item.Key, val.Value, false);
+                        unit = MetricUtils.GetUnitStr(item.Key, val.Value, MetricUtils.UnitContext.Panel);
+                        pct = MetricUtils.GetProgressValue(item.Key, val.Value) * 100.0;
+                        status = MetricUtils.GetState(item.Key, val.Value);
+                    }
+                    else
+                    {
+                        valStr = "—";
+                        unit = "";
+                        pct = 0;
+                        status = -1; // 前端视为无数据占位
+                    }
 
-                    rawValue = val;
-                    // [Refactor] 使用 MetricUtils 统一格式化逻辑，确保与桌面端完全一致 (包括单位换算、颜色阈值、内存显示模式)
-                    valStr = MetricUtils.GetValueStr(item.Key, val.Value, false); // false = Panel Context (Standard)
-                    unit = MetricUtils.GetUnitStr(item.Key, val.Value, MetricUtils.UnitContext.Panel);
-                    
-                    // GetProgressValue 返回 0.0-1.0，Web端通常需要 0-100
-                    pct = MetricUtils.GetProgressValue(item.Key, val.Value) * 100.0;
-                    
-                    // 状态判断 (0=Safe, 1=Warn, 2=Crit)
-                    status = MetricUtils.GetState(item.Key, val.Value);
-                
-                    // Primary Logic
                     if (item.Key == "BAT.Percent") isPrimary = true;
                     else if (item.Key == "CPU.Load") isPrimary = true;
                     else if (item.Key == "MEM.Load") isPrimary = true;
@@ -240,15 +247,15 @@ namespace LiteMonitor.src.WebServer
                     else isPrimary = false;
                 }
 
-                if (string.IsNullOrEmpty(valStr)) valStr = "--";
+                if (string.IsNullOrEmpty(valStr)) valStr = "—";
                 
                 writer.WriteStartObject();
                 writer.WriteString("k", item.Key);
                 writer.WriteString("n", displayName);
                 writer.WriteString("gid", groupId);
                 writer.WriteString("gn", groupDisplay);
-                // ★★★ 新增：发送组顺序索引，供前端 CSS order 使用 ★★★
                 writer.WriteNumber("gidx", groupIndices.TryGetValue(item.UIGroup, out int idx) ? idx : 999);
+                writer.WriteBoolean("on", item.VisibleInPanel);
                 writer.WriteString("v", valStr);
                 writer.WriteString("u", unit);
                 writer.WriteNumber("pct", pct);
@@ -260,6 +267,149 @@ namespace LiteMonitor.src.WebServer
 
             writer.WriteEndArray();
             writer.WriteEndObject();
+        }
+
+        private static void WriteHardwareTree(Utf8JsonWriter writer, HardwareMonitor hw)
+        {
+            writer.WriteStartArray("tree");
+            try
+            {
+                var computer = hw.ComputerInstance;
+                if (computer?.Hardware == null)
+                {
+                    writer.WriteEndArray();
+                    return;
+                }
+
+                lock (hw.SyncLock)
+                {
+                    foreach (var device in computer.Hardware)
+                        WriteHardwareNode(writer, device);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("WriteHardwareTree: " + ex.Message);
+            }
+            writer.WriteEndArray();
+        }
+
+        private static void WriteHardwareNode(Utf8JsonWriter writer, IHardware device)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("t", HardwareTypeLabel(device.HardwareType));
+            writer.WriteString("n", SanitizeHardwareName(device.Name));
+            writer.WriteString("k", device.HardwareType.ToString());
+
+            writer.WriteStartArray("g");
+            foreach (var group in device.Sensors.GroupBy(s => s.SensorType).OrderBy(g => g.Key))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("t", SensorTypeLabel(group.Key));
+                writer.WriteString("k", group.Key.ToString());
+                writer.WriteStartArray("s");
+                foreach (var sensor in group)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("id", sensor.Identifier?.ToString() ?? "");
+                    writer.WriteString("n", sensor.Name ?? "—");
+                    writer.WriteString("v", FormatSensorValue(sensor.Value, sensor.SensorType));
+                    writer.WriteString("m", FormatSensorValue(sensor.Max, sensor.SensorType));
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+
+            writer.WriteStartArray("c");
+            if (device.SubHardware != null)
+            {
+                foreach (var sub in device.SubHardware)
+                    WriteHardwareNode(writer, sub);
+            }
+            writer.WriteEndArray();
+
+            writer.WriteEndObject();
+        }
+
+        private static string HardwareTypeLabel(HardwareType type) => type switch
+        {
+            HardwareType.Cpu => "处理器",
+            HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => "显卡",
+            HardwareType.Memory => "内存",
+            HardwareType.Motherboard => "主板",
+            HardwareType.Storage => "硬盘",
+            HardwareType.Network => "网卡",
+            HardwareType.SuperIO => "IO芯片",
+            HardwareType.Cooler => "散热器",
+            HardwareType.Battery => "电池",
+            _ => type.ToString()
+        };
+
+        private static string SensorTypeLabel(SensorType type) => type switch
+        {
+            SensorType.Temperature => "温度",
+            SensorType.Load => "负载",
+            SensorType.Fan => "风扇",
+            SensorType.Power => "功耗",
+            SensorType.Clock => "频率",
+            SensorType.Control => "控制",
+            SensorType.Voltage => "电压",
+            SensorType.Data => "数据",
+            SensorType.SmallData => "小型数据",
+            SensorType.Throughput => "吞吐量",
+            SensorType.Level => "剩余/寿命",
+            SensorType.Factor => "系数",
+            SensorType.Timing => "时序",
+            SensorType.Current => "电流",
+            SensorType.Energy => "能量",
+            SensorType.Noise => "噪声",
+            SensorType.Humidity => "湿度",
+            SensorType.Flow => "流量",
+            _ => type.ToString()
+        };
+
+        private static string FormatSensorValue(float? val, SensorType type)
+        {
+            if (!val.HasValue) return "—";
+            float v = val.Value;
+
+            if (type == SensorType.Data)
+                return MetricUtils.FormatDataSize((double)v * 1073741824.0);
+            if (type == SensorType.SmallData)
+                return MetricUtils.FormatDataSize((double)v * 1048576.0);
+            if (type == SensorType.Throughput)
+                return MetricUtils.GetValueStr("NET.Throughput", v) + MetricUtils.GetUnitStr("NET.Throughput", v, MetricUtils.UnitContext.Panel);
+
+            string key = type switch
+            {
+                SensorType.Voltage => "VOLTAGE",
+                SensorType.Clock => "CLOCK",
+                SensorType.Temperature => "TEMP",
+                SensorType.Load or SensorType.Level => "LOAD",
+                SensorType.Fan => "FAN",
+                SensorType.Power => "POWER",
+                SensorType.Current => "BAT.Current",
+                _ => ""
+            };
+
+            if (string.IsNullOrEmpty(key)) return v.ToString("0.0");
+            return MetricUtils.GetValueStr(key, v) + MetricUtils.GetUnitStr(key, v, MetricUtils.UnitContext.Panel);
+        }
+
+        private static string SanitizeHardwareName(string? input)
+        {
+            if (string.IsNullOrEmpty(input)) return "—";
+            char[] cleanChars = input.Where(c =>
+                char.IsLetterOrDigit(c) ||
+                c == ' ' || c == '-' || c == '_' || c == '.' ||
+                c == '(' || c == ')' || c == '[' || c == ']' ||
+                c == '#' || c == '/' || c == '+'
+            ).ToArray();
+            string result = new string(cleanChars).Trim();
+            while (result.Contains("  ")) result = result.Replace("  ", " ");
+            return result.Length < 2 ? "—" : result;
         }
     }
 }

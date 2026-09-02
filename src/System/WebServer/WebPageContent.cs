@@ -96,44 +96,18 @@ namespace LiteMonitor.src.WebServer
 
         private static readonly PanelDef[] Panels =
         {
-            new() { Id = "cpu", Title = "CPU", Kind = "health", Primary = "CPU.Load", Secondary = "CPU.Temp", Sev = "pctTemp",
-                Rule = "<70% · 70–90% · ≥90% · temp 75/85°C · bar = worse of util/temp" },
-            new() { Id = "gpu", Title = "GPU", Kind = "health", Primary = "GPU.Load", Secondary = "GPU.Temp", Sev = "pctTemp",
-                Rule = "<70% · 70–90% · ≥90% · temp 75/85°C · bar = worse of util/temp" },
-            new() { Id = "ram", Title = "RAM", Kind = "health", Primary = "MEM.Load", Sev = "ram",
-                Rule = "<80% · 80–90% · ≥90%" },
-            new() { Id = "vram", Title = "VRAM", Kind = "health", Primary = "GPU.VRAM", Sev = "ram",
-                Rule = "<80% · 80–90% · ≥90%" },
-            new() { Id = "net", Title = "NET", Kind = "volume", A = "NET.Down", B = "NET.Up", ALabel = "↓", BLabel = "↑",
-                Rule = "bar height = relative traffic · totals = sum for selected range" },
-            new() { Id = "diskio", Title = "DISK I/O", Kind = "volume", A = "DISK.Read", B = "DISK.Write", ALabel = "R", BLabel = "W",
-                Rule = "bar height = relative read+write volume" },
-            new() { Id = "diskTemp", Title = "DISK Temp", Kind = "health", Primary = "DISK.Temp", Sev = "temp",
+            new() { Id = "cpuLoad", Title = "CPU 占用", Kind = "health", Primary = "CPU.Load", Sev = "pct",
+                Rule = "<70% · 70–90% · ≥90%" },
+            new() { Id = "cpuTemp", Title = "CPU 温度", Kind = "health", Primary = "CPU.Temp", Sev = "temp",
                 Rule = "<75°C · 75–85°C · ≥85°C" },
-            new() { Id = "moboTemp", Title = "MOBO Temp", Kind = "health", Primary = "MOBO.Temp", Sev = "temp",
+            new() { Id = "gpuLoad", Title = "GPU 占用", Kind = "health", Primary = "GPU.Load", Sev = "pct",
+                Rule = "<70% · 70–90% · ≥90%" },
+            new() { Id = "gpuTemp", Title = "GPU 温度", Kind = "health", Primary = "GPU.Temp", Sev = "temp",
                 Rule = "<75°C · 75–85°C · ≥85°C" },
-            new() { Id = "cpuPower", Title = "CPU Power", Kind = "value", Primary = "CPU.Power", Sev = "none", Fmt = "W",
-                Rule = "average power per bucket" },
-            new() { Id = "gpuPower", Title = "GPU Power", Kind = "value", Primary = "GPU.Power", Sev = "none", Fmt = "W",
-                Rule = "average power per bucket" },
-            new() { Id = "cpuClock", Title = "CPU Clock", Kind = "value", Primary = "CPU.Clock", Sev = "none", Fmt = "MHz",
-                Rule = "average frequency per bucket" },
-            new() { Id = "gpuClock", Title = "GPU Clock", Kind = "value", Primary = "GPU.Clock", Sev = "none", Fmt = "MHz",
-                Rule = "average frequency per bucket" },
-            new() { Id = "fps", Title = "FPS", Kind = "value", Primary = "FPS", Sev = "none", Fmt = "FPS",
-                Rule = "average FPS per bucket" },
-            new() { Id = "cpuFan", Title = "CPU Fan", Kind = "value", Primary = "CPU.Fan", Sev = "none", Fmt = "RPM",
-                Rule = "average RPM per bucket" },
-            new() { Id = "gpuFan", Title = "GPU Fan", Kind = "value", Primary = "GPU.Fan", Sev = "none", Fmt = "RPM",
-                Rule = "average RPM per bucket" },
-            new() { Id = "caseFan", Title = "Case Fan", Kind = "value", Primary = "CASE.Fan", Sev = "none", Fmt = "RPM",
-                Rule = "average RPM per bucket" },
-            new() { Id = "cpuPump", Title = "CPU Pump", Kind = "value", Primary = "CPU.Pump", Sev = "none", Fmt = "RPM",
-                Rule = "average RPM per bucket" },
-            new() { Id = "bat", Title = "Battery", Kind = "health", Primary = "BAT.Percent", Sev = "bat",
-                Rule = "≥60% · 20–60% · ≤20% · bar = charge remaining (low = worse)" },
-            new() { Id = "batPower", Title = "Battery Power", Kind = "value", Primary = "BAT.Power", Sev = "none", Fmt = "W",
-                Rule = "average battery power" },
+            new() { Id = "ram", Title = "内存占用", Kind = "health", Primary = "MEM.Load", Sev = "memAbs",
+                Rule = "数值 = 已用容量 · 柱色按占用比例（<80% · 80–90% · ≥90%）" },
+            new() { Id = "net", Title = "网络流量", Kind = "volume", A = "NET.Down", B = "NET.Up", ALabel = "↓", BLabel = "↑",
+                Rule = "柱高 = 相对流量 · 右侧为所选时段合计" },
         };
 
         private static readonly string[] TrackedKeys = HardwareHistoryLogger.SupportedKeys.ToArray();
@@ -155,8 +129,8 @@ namespace LiteMonitor.src.WebServer
                 bucketSeconds = 60;
                 to = now;
                 from = now.AddMinutes(-30);
-                axisL = "30 min ago";
-                axisR = "now";
+                axisL = "30 分钟前";
+                axisR = "现在";
             }
             else
             {
@@ -261,6 +235,7 @@ namespace LiteMonitor.src.WebServer
                 pointCount = points.Count,
                 axisL,
                 axisR,
+                ramTotalGB = Settings.DetectedRamTotalGB,
                 flags,
                 buckets,
                 stats,
