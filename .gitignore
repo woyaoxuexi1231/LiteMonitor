@@ -1,0 +1,27 @@
+﻿## 编译产物
+bin/
+obj/
+publish/
+out/
+
+## Rider / IDE 与编辑器
+.idea/
+.vs/
+*.user
+*.suo
+
+## 依赖缓存与发布包
+*.nupkg
+*.snupkg
+*.zip
+
+## 日志 / 临时 / 输出
+*.log
+*.tmp
+logs/
+temp/
+
+## OS
+Thumbs.db
+.DS_Store
+Desktop.ini
