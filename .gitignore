@@ -1,0 +1,22 @@
+# ===== 构建产物 =====
+# 编译输出（bin）与中间文件（obj），覆盖主项目与 LiteMonitor.Updater
+[Bb]in/
+[Oo]bj/
+# 发布打包目录
+dist/
+
+# ===== IDE 用户文件 =====
+# Visual Studio
+.vs/
+*.suo
+*.user
+# 其他 IDE（JetBrains 等）
+.idea/
+
+# ===== 运行期自动生成的数据文件 =====
+settings.json
+settings.json.bak
+HardwareHistory.json
+HardwareHistory.json.bak
+TrafficHistory.json
+TrafficHistory.json.bak
