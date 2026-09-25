@@ -3,6 +3,7 @@ bin/
 obj/
 publish/
 out/
+dist/
 
 ## Rider / IDE 与编辑器
 .idea/
@@ -20,6 +21,14 @@ out/
 *.tmp
 logs/
 temp/
+
+## 运行期自动生成的数据文件
+settings.json
+settings.json.bak
+HardwareHistory.json
+HardwareHistory.json.bak
+TrafficHistory.json
+TrafficHistory.json.bak
 
 ## OS
 Thumbs.db
