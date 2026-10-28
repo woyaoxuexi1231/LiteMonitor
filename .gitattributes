@@ -1,0 +1,26 @@
+# 统一换行符：仓库内一律存 LF，检出/提交时自动转换
+# 配合 .editorconfig 使用，避免 Windows 与 WSL 之间的 CRLF/LF 噪音
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.jar binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.a binary
+*.lib binary
+*.mp4 binary
