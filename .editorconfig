@@ -1,0 +1,17 @@
+# EditorConfig: 统一 Windows / WSL 之间的换行符与缩进
+# https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,html,css,js,sln,csproj,props,targets,resx}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
